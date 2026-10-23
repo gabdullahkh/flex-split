@@ -36,7 +36,12 @@ nav button .ni{font-size:17px;line-height:1}nav .on{background:rgba(255,90,60,.1
 .exercise-preview .info{flex:1;min-width:0}.exercise-preview .info b{display:block}.exercise-preview .info span{font-size:13px;color:var(--mu)}
 .nav-order-row{display:grid;grid-template-columns:34px 1fr 44px 44px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}.nav-order-row:last-child{border-bottom:0}.nav-order-row .grab{color:var(--mu);text-align:center}
 .remember{display:flex;align-items:center;gap:10px;margin:2px 0 12px;color:var(--mu);font-size:14px}.remember input{width:18px;height:18px;accent-color:var(--ac)}
-nav{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));overflow:hidden}nav button{min-width:0;width:100%;padding-left:0;padding-right:0}
+nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));border-radius:26px;background:rgba(26,26,30,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}nav button{min-width:0;width:100%;padding:7px 0;border-radius:17px}nav button .ni{font-size:19px}nav .on{background:linear-gradient(180deg,rgba(255,90,60,.20),rgba(255,90,60,.10));box-shadow:inset 0 0 0 1px rgba(255,90,60,.12)}
+.exercise-preview{position:relative;border:1px solid var(--bd);border-radius:18px;padding:14px;margin:10px 0;background:rgba(255,255,255,.015)}
+.exercise-preview .edit-select{width:100%;margin-top:10px}
+.preview-actions{display:flex;gap:8px;margin-top:10px}.preview-actions select{flex:1;min-width:0}.preview-actions button{width:46px;flex:0 0 46px}
+.more-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.more-card{padding:18px;border:1px solid var(--bd);border-radius:20px;background:var(--cd);text-align:left;min-height:105px}.more-card b{display:block;font-size:17px;margin-bottom:4px}.more-card span{color:var(--mu);font-size:13px}
+
 @media(max-width:420px){#app{padding-left:14px;padding-right:14px}.exercise-title{font-size:17px}.set{grid-template-columns:40px 1fr 1fr 1fr 44px;gap:5px}}
 </style></head><body><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
@@ -189,9 +194,12 @@ function exs(){
  const days=(S.days&&S.days.length?S.days:[6,0,2,3]).slice();
  if(EX_DAY>=days.length)EX_DAY=0;
  const d=days[EX_DAY],sl=EX_DAY%4,ty=sl%2?L:U,tk=sl%2?'L':'U';
- let h=`<div class=hero><h2>Exercises</h2><p class=mu>Choose a training day to see its workout.</p></div><div class=day-picker><select onchange="EX_DAY=+this.value;r()">${days.map((x,i)=>`<option value="${i}" ${i===EX_DAY?'selected':''}>${DN[x]} · ${lab(i%4)}</option>`).join('')}</select></div><div class=c><div class=r><b>${DN[d]}</b>${badge(sl)}</div>`;
+ let h=`<div class=hero><h2>Exercises</h2><p class=mu>Choose a training day, then change any exercise. Changes automatically update your workout schedule.</p></div><div class=day-picker><select onchange="EX_DAY=+this.value;ALT_EDIT='';r()">${days.map((x,i)=>`<option value="${i}" ${i===EX_DAY?'selected':''}>${DN[x]} · ${lab(i%4)}</option>`).join('')}</select></div><div class=c><div class=r><b>${DN[d]}</b>${badge(sl)}</div>`;
  ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]];
-  h+=`<div class=exercise-preview><span class=num>${i+1}</span><div class=info><b>${esc(a[0])}</b><span>${esc(e[3])} · ${e[2]?'2–3 min':'90–120 s'} rest</span></div><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>`;
+  h+=`<div class=exercise-preview><div style="display:flex;align-items:center;gap:12px"><span class=num>${i+1}</span><div class=info><b>${esc(a[0])}</b><span>${esc(e[3])} · ${e[2]?'2–3 min':'90–120 s'} rest</span></div><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
+  <div class=preview-actions><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Alternative':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()">＋</button></div>
+  ${ALT_EDIT===key?`<div class=alt-editor><b>Add custom alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://... video or exercise link"><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
+  </div>`;
  });
  return h+'</div>';
 }
@@ -199,6 +207,15 @@ function exs(){
 function moveNav(id,dir){
  const def=['today','exs','week','prog','cmp','prg','cfg'],cur=(S.nav||def).filter(x=>def.includes(x));def.forEach(x=>{if(!cur.includes(x))cur.push(x)});
  if(cur.includes('exs')&&cur.indexOf('exs')>2){cur.splice(cur.indexOf('exs'),1);cur.splice(1,0,'exs')}const i=cur.indexOf(id),j=i+dir;if(i<0||j<0||j>=cur.length)return;[cur[i],cur[j]]=[cur[j],cur[i]];S.nav=cur;save();r();
+}
+
+
+function more(){
+ return `<div class=hero><h2>More</h2><p class=mu>Program, comparison, and app settings.</p></div><div class=more-grid>
+ <button class=more-card onclick="T='cmp';r();scrollTo(0,0)"><b>⇄ Compare</b><span>Compare two logged sessions</span></button>
+ <button class=more-card onclick="T='prg';r();scrollTo(0,0)"><b>◫ Program</b><span>Cycle, progression, and history</span></button>
+ <button class=more-card style="grid-column:1/-1" onclick="T='cfg';r();scrollTo(0,0)"><b>⚙ Settings</b><span>Schedule, units, account, and navigation</span></button>
+ </div>`;
 }
 
 function best(e){return e&&e.s.filter(x=>+x.w).sort((a,b)=>b.w-a.w||b.r-a.r)[0]}
@@ -210,10 +227,12 @@ function prog(){let h='<h2>Progress</h2><p class=mu>Same session vs same session
    h+=`<div class=r style="margin-top:8px"><span>${esc(a.nm)}</span><span class=${cl}>${z&&b.nm===a.nm?z.w+'×'+z.r+' → ':''}${x.w}${S.units}×${x.r||'?'} ${ar}</span></div>`});h+='</div>'}
  return h+(any?'':'<div class=c>Log a session to see progress here.</div>')}
 
-function prg(){const k=S.n/4|0,pw=k%8+1;return `<h2>Program</h2><p class=mu>Cycle ${(k/8|0)+1} · ${S.n} sessions done. After week 8 it repeats — weeks 1–2 act as a built-in deload.</p><div class=w>${[1,2,3,4,5,6,7,8].map(w=>`<div class=c style="text-align:center;${w==pw?'border-color:var(--ac)':''}"><b>W${w}</b><div class=mu>RIR ${w<3?'2–3':'1–2'}</div></div>`).join('')}</div><div class=c><b>Progression</b><p class=mu>Keep the same weight until you hit 10 reps on both sets. Then add the smallest increment. Reps may drop after an increase — normal. If everything stalls for 2+ weeks, check sleep and food first.</p></div>`}
+function prg(){const k=S.n/4|0,pw=k%8+1;return `<button style="margin-bottom:12px" onclick="T='more';r()">← More</button><h2>Program</h2><p class=mu>Cycle ${(k/8|0)+1} · ${S.n} sessions done. After week 8 it repeats — weeks 1–2 act as a built-in deload.</p><div class=w>${[1,2,3,4,5,6,7,8].map(w=>`<div class=c style="text-align:center;${w==pw?'border-color:var(--ac)':''}"><b>W${w}</b><div class=mu>RIR ${w<3?'2–3':'1–2'}</div></div>`).join('')}</div><div class=c><b>Progression</b><p class=mu>Keep the same weight until you hit 10 reps on both sets. Then add the smallest increment. Reps may drop after an increase — normal. If everything stalls for 2+ weeks, check sleep and food first.</p></div>`}
 
-function navOrderUI(){const meta={today:['Today','●'],week:['Week','▦'],exs:['Exercises','▤'],prog:['Progress','↗'],cmp:['Compare','⇄'],prg:['Program','◫'],cfg:['Settings','⚙']},def=['today','exs','week','prog','cmp','prg','cfg'],cur=(S.nav||def).filter(x=>def.includes(x));def.forEach(x=>{if(!cur.includes(x))cur.push(x)});S.nav=cur;return `<div class=c><b>Navigation order</b><p class=mu>Move tabs left or right.</p>${cur.map((id,i)=>`<div class=nav-order-row><span class=grab>${meta[id][1]}</span><b>${meta[id][0]}</b><button onclick="moveNav('${id}',-1)" ${i===0?'disabled':''}>↑</button><button onclick="moveNav('${id}',1)" ${i===cur.length-1?'disabled':''}>↓</button></div>`).join('')}</div>`}
-function cfg(first){return `<h2>${first?'Set up Flex Split':'Settings'}</h2><p class=mu>${SB_OK?'Synced with Supabase.':'Saved on this device; Supabase sync unavailable.'}${USER?' · '+esc(USER.email):''}</p><div class=c><b>Days you can train</b><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${[6,0,1,2,3,4,5].map(d=>`<button class="d ${S.days.includes(d)?'s':''}" onclick="td(${d})">${DN[d]}</button>`).join('')}</div>${S.days.length<3?'<div class=wr style="margin-top:8px">Aim for at least 3 days. 3 consistent beats 5 inconsistent.</div>':''}</div>
+function navOrderUI(){const meta={today:['Today','●'],exs:['Exercises','▤'],week:['Week','▦'],prog:['Progress','↗'],more:['More','•••']},def=['today','exs','week','prog','more'];let cur=(S.nav5||def).filter(x=>def.includes(x));def.forEach(x=>{if(!cur.includes(x))cur.push(x)});S.nav5=cur;return `<div class=c><b>Navigation order</b><p class=mu>Arrange the five main tabs.</p>${cur.map((id,i)=>`<div class=nav-order-row><span class=grab>${meta[id][1]}</span><b>${meta[id][0]}</b><button onclick="moveNav5('${id}',-1)" ${i===0?'disabled':''}>↑</button><button onclick="moveNav5('${id}',1)" ${i===cur.length-1?'disabled':''}>↓</button></div>`).join('')}</div>`}
+function moveNav5(id,dir){const def=['today','exs','week','prog','more'],cur=(S.nav5||def).slice();const i=cur.indexOf(id),j=i+dir;if(i<0||j<0||j>=cur.length)return;[cur[i],cur[j]]=[cur[j],cur[i]];S.nav5=cur;save();r();}
+
+function cfg(first){return `${first?'':'<button style="margin-bottom:12px" onclick="T=\'more\';r()">← More</button>'}<h2>${first?'Set up Flex Split':'Settings'}</h2><p class=mu>${SB_OK?'Synced with Supabase.':'Saved on this device; Supabase sync unavailable.'}${USER?' · '+esc(USER.email):''}</p><div class=c><b>Days you can train</b><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${[6,0,1,2,3,4,5].map(d=>`<button class="d ${S.days.includes(d)?'s':''}" onclick="td(${d})">${DN[d]}</button>`).join('')}</div>${S.days.length<3?'<div class=wr style="margin-top:8px">Aim for at least 3 days. 3 consistent beats 5 inconsistent.</div>':''}</div>
  <div class=c><div class=r>Units<select onchange="S.units=this.value;S.inc=this.value=='kg'?2.5:5;save();r()"><option ${S.units=='kg'?'selected':''}>kg</option><option ${S.units=='lb'?'selected':''}>lb</option></select></div>
  <div class=r style="margin-top:8px">Experience<select onchange="S.exp=this.value;save()"><option value=beginner ${S.exp=='beginner'?'selected':''}>Beginner</option><option value=advanced ${S.exp=='advanced'?'selected':''}>Advanced</option></select></div>
  <div class=r style="margin-top:8px">Start date<input type=date value="${S.start}" onchange="S.start=this.value;save()"></div>
@@ -229,18 +248,22 @@ function cp(c){let o='Cycle\tWeek\tSession\tExercise\tSet 1\tSet 2\n';rows().for
  const f=()=>{CP=o;r();scrollTo(0,0)};try{navigator.clipboard.writeText(o).then(()=>toast('Copied. Paste into Google Sheets or Excel.'),f)}catch(e){f()}}
 let CM=['',''];
 const sl_=v=>{const[k,q]=v.split('|').map(Number);return `Cycle ${(k/8|0)+1} · Wk ${k%8+1} · ${lab(q)}`};
-function cmp(){const Q=[...new Set(rows().map(x=>x.k+'|'+x.sl))];if(Q.length<2)return '<h2>Compare</h2><div class=c>Log at least two sessions to compare them.</div>';
+function cmp(){const back='<button style="margin-bottom:12px" onclick="T=\'more\';r()">← More</button>';const Q=[...new Set(rows().map(x=>x.k+'|'+x.sl))];if(Q.length<2)return back+'<h2>Compare</h2><div class=c>Log at least two sessions to compare them.</div>';
  if(!Q.includes(CM[0])||!Q.includes(CM[1]))CM=[Q[Q.length-2],Q[Q.length-1]];
  const op=v=>Q.map(x=>`<option value="${x}" ${x==v?'selected':''}>${sl_(x)}</option>`).join('');
  const g=v=>{const o={};rows().filter(x=>x.k+'|'+x.sl==v).forEach(x=>o[x.e.nm]=best(x.e));return o};
  const A=g(CM[0]),B=g(CM[1]),ns=[...new Set([...Object.keys(A),...Object.keys(B)])],f=z=>z?z.w+'×'+(z.r||'?'):'—';
- return `<h2>Compare</h2><div class=c><div class=r>A<select onchange="CM[0]=this.value;r()">${op(CM[0])}</select></div><div class=r style="margin-top:8px">B<select onchange="CM[1]=this.value;r()">${op(CM[1])}</select></div></div><div class=c style="overflow-x:auto"><table><tr><th>Exercise</th><th>A</th><th>B</th><th></th></tr>${ns.map(n=>{const a=A[n],b=B[n];let d='';if(a&&b){const u=b.w>a.w||(b.w==a.w&&b.r>a.r);d=b.w==a.w&&b.r==a.r?'▬':u?'<span class=ok>▲</span>':'<span class=bad>▼</span>'}return `<tr><td>${esc(n)}</td><td>${f(a)}</td><td>${f(b)}</td><td>${d}</td></tr>`}).join('')}</table></div><p class=mu>Best set per exercise. ▲ means B is better than A.</p>`}
+ return back+`<h2>Compare</h2><div class=c><div class=r>A<select onchange="CM[0]=this.value;r()">${op(CM[0])}</select></div><div class=r style="margin-top:8px">B<select onchange="CM[1]=this.value;r()">${op(CM[1])}</select></div></div><div class=c style="overflow-x:auto"><table><tr><th>Exercise</th><th>A</th><th>B</th><th></th></tr>${ns.map(n=>{const a=A[n],b=B[n];let d='';if(a&&b){const u=b.w>a.w||(b.w==a.w&&b.r>a.r);d=b.w==a.w&&b.r==a.r?'▬':u?'<span class=ok>▲</span>':'<span class=bad>▼</span>'}return `<tr><td>${esc(n)}</td><td>${f(a)}</td><td>${f(b)}</td><td>${d}</td></tr>`}).join('')}</table></div><p class=mu>Best set per exercise. ▲ means B is better than A.</p>`}
 function del(k){if(CF!==k){CF=k;r();return}delete S.log[k];CF='';save();r()}
 function rst(){if(CF!=='rst'){CF='rst';r();return}try{localStorage.removeItem(userKey())}catch(e){}S=DEF();save();T='today';CF='';r()}
 function toast(t){const e=document.createElement('div');e.className='c';e.style.cssText='position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));text-align:center;z-index:9';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2500)}
-function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}if(!USER){$('nv').innerHTML='';$('app').innerHTML=authView();return}const meta={today:['Today','●'],week:['Week','▦'],exs:['Exercises','▤'],prog:['Progress','↗'],cmp:['Compare','⇄'],prg:['Program','◫'],cfg:['Settings','⚙']},def=['today','week','exs','prog','cmp','prg','cfg'],order=(S.nav||def).filter(x=>meta[x]);def.forEach(x=>{if(!order.includes(x))order.push(x)});
- $('nv').innerHTML=S.setup?order.map(id=>`<button class="${T==id?'on':''}" onclick="T='${id}';CF='';ALT_EDIT='';r();scrollTo(0,0)"><span class=ni>${meta[id][1]}</span><span>${meta[id][0]}</span></button>`).join(''):'';
- $('app').innerHTML=(CP?`<div class=c><b>Select all, then copy</b><textarea rows=8 style="width:100%" readonly onfocus="this.select()">${esc(CP)}</textarea><button onclick="CP='';r()">Close</button></div>`:'')+(!S.setup?cfg(1):{today,week,exs,prog,cmp,prg:()=>prg()+hist(),cfg}[T]())}
+function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}if(!USER){$('nv').innerHTML='';$('app').innerHTML=authView();return}
+ const meta={today:['Today','●'],exs:['Exercises','▤'],week:['Week','▦'],prog:['Progress','↗'],more:['More','•••']};
+ const def=['today','exs','week','prog','more'];
+ let order=(S.nav5||def).filter(x=>meta[x]);def.forEach(x=>{if(!order.includes(x))order.push(x)});
+ const activeNav=['cmp','prg','cfg'].includes(T)?'more':T;
+ $('nv').innerHTML=S.setup?order.map(id=>`<button class="${activeNav==id?'on':''}" onclick="T='${id}';CF='';ALT_EDIT='';r();scrollTo(0,0)"><span class=ni>${meta[id][1]}</span><span>${meta[id][0]}</span></button>`).join(''):'';
+ $('app').innerHTML=(CP?`<div class=c><b>Select all, then copy</b><textarea rows=8 style="width:100%" readonly onfocus="this.select()">${esc(CP)}</textarea><button onclick="CP='';r()">Close</button></div>`:'')+(!S.setup?cfg(1):{today,exs,week,prog,more,cmp,prg:()=>prg()+hist(),cfg}[T]())}
 $('tm').onclick=()=>{te=0};
 setInterval(()=>{const e=$('tm');if(!te){e.hidden=1;return}const s=Math.ceil((te-Date.now())/1e3);if(s<=0){te=0;e.hidden=1;try{navigator.vibrate&&navigator.vibrate(300)}catch(x){}return}e.hidden=0;e.textContent='Rest '+(s/60|0)+':'+String(s%60).padStart(2,'0')+' · tap to skip'},500);
 r();
