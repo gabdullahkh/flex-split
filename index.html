@@ -32,14 +32,14 @@ nav button .ni{font-size:17px;line-height:1}nav .on{background:rgba(255,90,60,.1
 .hero h2{margin:0 0 4px}.hero .mu{margin:0}
 .day-picker{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:14px}.day-picker select{width:100%;font-weight:650;padding:13px}
 .exercise-preview{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--bd)}.exercise-preview:last-child{border-bottom:0}
-.exercise-preview .num{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:rgba(255,90,60,.12);color:var(--ac);font-weight:750;flex:0 0 30px}
-.exercise-preview .info{flex:1;min-width:0;overflow:hidden}.exercise-preview .info b{display:block;overflow-wrap:anywhere}.exercise-preview .info span{font-size:13px;color:var(--mu)}
+.exercise-preview .num{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(180deg,rgba(255,90,60,.20),rgba(255,90,60,.11));color:var(--ac);font-weight:800;font-size:16px}
+.exercise-preview .info{min-width:0}.exercise-preview .info b{display:block;font-size:17px;line-height:1.25;overflow-wrap:normal;word-break:normal}.exercise-preview .info span{display:block;margin-top:3px;font-size:13px;color:var(--mu)}
 .nav-order-row{display:grid;grid-template-columns:34px 1fr 44px 44px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}.nav-order-row:last-child{border-bottom:0}.nav-order-row .grab{color:var(--mu);text-align:center}
 .remember{display:flex;align-items:center;gap:10px;margin:2px 0 12px;color:var(--mu);font-size:14px}.remember input{width:18px;height:18px;accent-color:var(--ac)}
 nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));border-radius:26px;background:rgba(24,24,28,.94);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-color:rgba(255,255,255,.09)}nav button{min-width:0;width:100%;padding:7px 0;border-radius:17px}nav button .ni{font-size:19px}nav .on{background:linear-gradient(180deg,rgba(255,90,60,.24),rgba(255,90,60,.10));box-shadow:inset 0 0 0 1px rgba(255,90,60,.16),0 5px 14px rgba(255,90,60,.08)}
-.exercise-preview>div:first-child{display:grid!important;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%}.exercise-preview{display:block!important;position:relative;border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:15px;margin:11px 0;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.008));overflow:hidden;width:100%}
+.exercise-head{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%}.exercise-preview{display:block!important;position:relative;border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:16px;margin:12px 0;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));overflow:hidden;width:100%}
 .exercise-preview .edit-select{width:100%;margin-top:10px}
-.preview-actions{display:grid!important;grid-template-columns:minmax(0,1fr) 46px!important;gap:8px;margin-top:12px;width:100%;min-width:0}.preview-actions select{display:block;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden;text-overflow:ellipsis}.preview-actions button{width:46px}
+.preview-actions{display:grid!important;grid-template-columns:minmax(0,1fr) 48px!important;gap:10px;margin-top:14px;width:100%;min-width:0}.preview-actions select{display:block;width:100%!important;max-width:100%!important;min-width:0!important;height:48px;padding:0 14px;border-radius:14px;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,.18)}.preview-actions button{width:48px;height:48px;border-radius:14px;font-size:24px}
 .more-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.more-card{padding:18px;border:1px solid var(--bd);border-radius:20px;background:var(--cd);text-align:left;min-height:105px}.more-card b{display:block;font-size:17px;margin-bottom:4px}.more-card span{color:var(--mu);font-size:13px}
 
 @media(max-width:420px){
@@ -52,7 +52,7 @@ nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden;p
  .exercise-preview>div:first-child{display:grid!important;grid-template-columns:34px minmax(0,1fr) auto;gap:10px!important;width:100%}
  .exercise-preview .info{min-width:0}
  .exercise-preview .info b{font-size:17px;line-height:1.22;word-break:normal;overflow-wrap:anywhere}
- .exercise-preview .watch{font-size:15px}
+ .exercise-preview .watch{font-size:15px;font-weight:750}
  .preview-actions{display:grid;grid-template-columns:minmax(0,1fr) 44px;width:100%;gap:8px}
  .preview-actions select{width:100%;max-width:100%;min-width:0;font-size:15px}
  .preview-actions button{width:44px}
@@ -211,11 +211,24 @@ function exs(){
  const days=(S.days&&S.days.length?S.days:[6,0,2,3]).slice();
  if(EX_DAY>=days.length)EX_DAY=0;
  const d=days[EX_DAY],sl=EX_DAY%4,ty=sl%2?L:U,tk=sl%2?'L':'U';
- let h=`<div class=hero><h2>Exercises</h2><p class=mu>Choose a training day, then change any exercise. Changes automatically update your workout schedule.</p></div><div class=day-picker><select onchange="EX_DAY=+this.value;ALT_EDIT='';r()">${days.map((x,i)=>`<option value="${i}" ${i===EX_DAY?'selected':''}>${DN[x]} · ${lab(i%4)}</option>`).join('')}</select></div><div class=c><div class=r><b>${DN[d]}</b>${badge(sl)}</div>`;
+ let h=`<div class=hero><h2>Exercises</h2><p class=mu>Choose a training day, then select the exercise you want. Changes update your workout automatically.</p></div>
+ <div class=day-picker><select onchange="EX_DAY=+this.value;ALT_EDIT='';r()">${days.map((x,i)=>`<option value="${i}" ${i===EX_DAY?'selected':''}>${DN[x]} · ${lab(i%4)}</option>`).join('')}</select></div>
+ <div class=c><div class=r style="margin-bottom:8px"><b style="font-size:20px">${DN[d]}</b>${badge(sl)}</div>`;
  ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]];
-  h+=`<div class=exercise-preview><div style="display:flex;align-items:center;gap:12px"><span class=num>${i+1}</span><div class=info><b>${esc(a[0])}</b><span>${esc(e[3])} · ${e[2]?'2–3 min':'90–120 s'} rest</span></div><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
-  <div class=preview-actions><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Alternative':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()">＋</button></div>
-  ${ALT_EDIT===key?`<div class=alt-editor><b>Add custom alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://... video or exercise link"><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
+  h+=`<div class=exercise-preview>
+    <div class=exercise-head>
+      <span class=num>${i+1}</span>
+      <div class=info><b>${esc(a[0])}</b><span>${esc(e[3])} · ${e[2]?'2–3 min':'90–120 s'} rest</span></div>
+      <a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a>
+    </div>
+    <div class=preview-actions>
+      <select onchange="sw('${key}',this.value)">
+        <option value=0 ${si?'':'selected'}>${esc(e[0])}</option>
+        ${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Alternative':'Custom'}: ${esc(x[0])}</option>`).join('')}
+      </select>
+      <button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()" aria-label="Add custom alternative">＋</button>
+    </div>
+    ${ALT_EDIT===key?`<div class=alt-editor><b>Add custom alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://... video or exercise link"><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
   </div>`;
  });
  return h+'</div>';
