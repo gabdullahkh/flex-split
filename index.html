@@ -27,7 +27,17 @@ body{background:radial-gradient(circle at 50% -120px,color-mix(in srgb,var(--ac)
 nav{left:10px;right:10px;bottom:8px;border:1px solid var(--bd);border-radius:22px;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:var(--cd);box-shadow:0 12px 35px rgba(0,0,0,.28);overflow:hidden}
 nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;min-height:50px;padding:6px 2px;border-radius:15px;font-size:10px;color:var(--mu)}
 nav button .ni{font-size:17px;line-height:1}nav .on{background:rgba(255,90,60,.12);color:var(--ac);font-weight:700}
-#tm{bottom:calc(82px + env(safe-area-inset-bottom,0px));border-radius:16px}
+#tm{bottom:calc(88px + env(safe-area-inset-bottom,0px));border-radius:16px}
+.hero{margin:2px 0 18px;padding:18px;border:1px solid var(--bd);border-radius:24px;background:linear-gradient(145deg,rgba(255,90,60,.10),transparent 58%),var(--cd);box-shadow:0 16px 45px rgba(0,0,0,.18)}
+.hero h2{margin:0 0 4px}.hero .mu{margin:0}
+.day-picker{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:14px}.day-picker select{width:100%;font-weight:650;padding:13px}
+.exercise-preview{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--bd)}.exercise-preview:last-child{border-bottom:0}
+.exercise-preview .num{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:rgba(255,90,60,.12);color:var(--ac);font-weight:750;flex:0 0 30px}
+.exercise-preview .info{flex:1;min-width:0}.exercise-preview .info b{display:block}.exercise-preview .info span{font-size:13px;color:var(--mu)}
+.nav-order-row{display:grid;grid-template-columns:34px 1fr 44px 44px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}.nav-order-row:last-child{border-bottom:0}.nav-order-row .grab{color:var(--mu);text-align:center}
+.remember{display:flex;align-items:center;gap:10px;margin:2px 0 12px;color:var(--mu);font-size:14px}.remember input{width:18px;height:18px;accent-color:var(--ac)}
+nav{overflow-x:auto;scrollbar-width:none;justify-content:flex-start}nav::-webkit-scrollbar{display:none}nav button{flex:1 0 54px}
+@media(max-width:420px){#app{padding-left:14px;padding-right:14px}.exercise-title{font-size:17px}.set{grid-template-columns:40px 1fr 1fr 1fr 44px;gap:5px}}
 </style></head><body><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -57,15 +67,16 @@ const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice
 const ad=(s,k)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+k);return iso(d)},wd=s=>new Date(s+'T12:00:00').getDay();
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const lab=sl=>(sl%2?'Lower ':'Upper ')+(sl<2?1:2);
-const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},ca:{},notes:{},inc:2.5,dates:{}});
-let S=DEF(),T='today',te=0,CF='',CP='';
+const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},ca:{},notes:{},inc:2.5,dates:{},nav:['today','week','exs','prog','cmp','prg','cfg']});
+let S=DEF(),T='today',te=0,CF='',CP='',EX_DAY=0;
 
 const SUPABASE_URL='https://coowfazvgbrvyumvjyfs.supabase.co';
 const SUPABASE_KEY='sb_publishable_hXvOFNYNxQERls14TkW9YA_yjoTjRaK';
 const SB_TABLE='flexsplit_state';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let USER=null,AUTH_READY=0,AUTH_MSG='',dbT=0,SB_OK=0,ALT_EDIT='';
-const EMAIL_KEY='flexsplit_email';
+const EMAIL_KEY='flexsplit_email',REMEMBER_KEY='flexsplit_remember';
+const rememberOn=()=>{try{return localStorage.getItem(REMEMBER_KEY)!=='0'}catch(e){return true}};
 const userKey=()=>USER?K+'_'+USER.id:K+'_signedout';
 
 function loadLocal(){
@@ -101,7 +112,7 @@ async function loadUserData(){
 }
 async function authInit(){
  const {data}=await sb.auth.getSession();
- USER=data.session?.user||null;
+ if(data.session&&!rememberOn()){await sb.auth.signOut();USER=null}else USER=data.session?.user||null;
  if(USER)await loadUserData();
  AUTH_READY=1;r();
  sb.auth.onAuthStateChange(async(_event,session)=>{
@@ -112,15 +123,16 @@ async function authInit(){
  });
 }
 async function signIn(){
- const email=($('ae')?.value||'').trim(),password=$('ap')?.value||'';
+ const email=($('ae')?.value||'').trim(),password=$('ap')?.value||'',remember=$('ar')?.checked!==false;
  AUTH_MSG='';if(!email||!password){AUTH_MSG='Enter email and password.';r();return}
- try{localStorage.setItem(EMAIL_KEY,email)}catch(e){}
+ try{localStorage.setItem(EMAIL_KEY,email);localStorage.setItem(REMEMBER_KEY,remember?'1':'0')}catch(e){}
  const {error}=await sb.auth.signInWithPassword({email,password});
  AUTH_MSG=error?error.message:'';if(error)r();
 }
 async function signUp(){
- const email=($('ae')?.value||'').trim(),password=$('ap')?.value||'';
+ const email=($('ae')?.value||'').trim(),password=$('ap')?.value||'',remember=$('ar')?.checked!==false;
  AUTH_MSG='';if(!email||password.length<6){AUTH_MSG='Enter an email and a password of at least 6 characters.';r();return}
+ try{localStorage.setItem(EMAIL_KEY,email);localStorage.setItem(REMEMBER_KEY,remember?'1':'0')}catch(e){}
  const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
  if(error)AUTH_MSG=error.message;
  else if(!data.session)AUTH_MSG='Account created. Check your email to confirm it, then sign in.';
@@ -128,7 +140,7 @@ async function signUp(){
  r();
 }
 async function signOut(){await sb.auth.signOut();}
-function authView(){let em='';try{em=localStorage.getItem(EMAIL_KEY)||''}catch(e){}return `<h2>Flex Split</h2><p class=mu>Sign in to keep your workout data private and synced across your devices.</p><div class=c><input id=ae type=email autocomplete=email placeholder="Email" value="${esc(em)}" style="width:100%;margin-bottom:8px"><input id=ap type=password autocomplete=current-password placeholder="Password" style="width:100%;margin-bottom:8px"><button class=p onclick="signIn()">Sign in</button><button style="width:100%;margin-top:8px" onclick="signUp()">Create account</button>${AUTH_MSG?`<div class="${AUTH_MSG.startsWith('Account')?'ok':'wr'}" style="margin-top:10px">${esc(AUTH_MSG)}</div>`:''}</div>`}
+function authView(){let em='';try{em=localStorage.getItem(EMAIL_KEY)||''}catch(e){}return `<div class=hero><h2>Flex Split</h2><p class=mu>Your training, synced across devices.</p></div><div class=c><input id=ae type=email autocomplete=email placeholder="Email" value="${esc(em)}" style="width:100%;margin-bottom:8px"><input id=ap type=password autocomplete=current-password placeholder="Password" style="width:100%;margin-bottom:8px"><label class=remember><input id=ar type=checkbox ${rememberOn()?'checked':''}>Remember me on this device</label><button class=p onclick="signIn()">Sign in</button><button style="width:100%;margin-top:8px" onclick="signUp()">Create account</button>${AUTH_MSG?`<div class="${AUTH_MSG.startsWith('Account')?'ok':'wr'}" style="margin-top:10px">${esc(AUTH_MSG)}</div>`:''}</div>`}
 authInit();
 
 function plan(c){const t=iso(new Date());let d=S.hold&&S.hold>t?S.hold:t;if(d<S.start)d=S.start;if(S.last&&S.last>=d)d=ad(S.last,1);
@@ -172,6 +184,23 @@ function week(){const t=iso(new Date()),st=ad(t,-((wd(t)+1)%7)),D=S.dates||{};
   h+=`<div class="c r" style="${d===t?'border-color:var(--ac)':''}"><div><b>${DN[wd(d)]}</b> <span class=mu>${d.slice(5)}${d===t?' · today':''}</span></div>${on?'<span>'+badge(k++%4)+(dn?' <span class=ok>✓ done</span>':'')+'</span>':'<span class=mu>Rest</span>'}</div>`}
  return h+(mx>3?'<p class=wr>4+ training days in a row. Leave a rest day in between.</p>':'')+(S.days.length<3?'<p class=wr>Aim for at least 3 days. 3 consistent beats 5 inconsistent.</p>':'')}
 
+
+function exs(){
+ const days=(S.days&&S.days.length?S.days:[6,0,2,3]).slice();
+ if(EX_DAY>=days.length)EX_DAY=0;
+ const d=days[EX_DAY],sl=EX_DAY%4,ty=sl%2?L:U,tk=sl%2?'L':'U';
+ let h=`<div class=hero><h2>Exercises</h2><p class=mu>Choose a training day to see its workout.</p></div><div class=day-picker><select onchange="EX_DAY=+this.value;r()">${days.map((x,i)=>`<option value="${i}" ${i===EX_DAY?'selected':''}>${DN[x]} · ${lab(i%4)}</option>`).join('')}</select></div><div class=c><div class=r><b>${DN[d]}</b>${badge(sl)}</div>`;
+ ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]];
+  h+=`<div class=exercise-preview><span class=num>${i+1}</span><div class=info><b>${esc(a[0])}</b><span>${esc(e[3])} · ${e[2]?'2–3 min':'90–120 s'} rest</span></div><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>`;
+ });
+ return h+'</div>';
+}
+
+function moveNav(id,dir){
+ const def=['today','week','exs','prog','cmp','prg','cfg'],cur=(S.nav||def).filter(x=>def.includes(x));def.forEach(x=>{if(!cur.includes(x))cur.push(x)});
+ const i=cur.indexOf(id),j=i+dir;if(i<0||j<0||j>=cur.length)return;[cur[i],cur[j]]=[cur[j],cur[i]];S.nav=cur;save();r();
+}
+
 function best(e){return e&&e.s.filter(x=>+x.w).sort((a,b)=>b.w-a.w||b.r-a.r)[0]}
 function prog(){let h='<h2>Progress</h2><p class=mu>Same session vs same session last week.</p>',any=0;
  for(let sl=0;sl<4;sl++){const ks=[...new Set(Object.keys(S.log).filter(x=>x.split('|')[1]==sl).map(x=>+x.split('|')[0]))].sort((a,b)=>b-a);if(!ks.length)continue;any=1;
@@ -183,11 +212,13 @@ function prog(){let h='<h2>Progress</h2><p class=mu>Same session vs same session
 
 function prg(){const k=S.n/4|0,pw=k%8+1;return `<h2>Program</h2><p class=mu>Cycle ${(k/8|0)+1} · ${S.n} sessions done. After week 8 it repeats — weeks 1–2 act as a built-in deload.</p><div class=w>${[1,2,3,4,5,6,7,8].map(w=>`<div class=c style="text-align:center;${w==pw?'border-color:var(--ac)':''}"><b>W${w}</b><div class=mu>RIR ${w<3?'2–3':'1–2'}</div></div>`).join('')}</div><div class=c><b>Progression</b><p class=mu>Keep the same weight until you hit 10 reps on both sets. Then add the smallest increment. Reps may drop after an increase — normal. If everything stalls for 2+ weeks, check sleep and food first.</p></div>`}
 
+function navOrderUI(){const meta={today:['Today','●'],week:['Week','▦'],exs:['Exercises','▤'],prog:['Progress','↗'],cmp:['Compare','⇄'],prg:['Program','◫'],cfg:['Settings','⚙']},def=['today','week','exs','prog','cmp','prg','cfg'],cur=(S.nav||def).filter(x=>def.includes(x));def.forEach(x=>{if(!cur.includes(x))cur.push(x)});S.nav=cur;return `<div class=c><b>Navigation order</b><p class=mu>Move tabs left or right.</p>${cur.map((id,i)=>`<div class=nav-order-row><span class=grab>${meta[id][1]}</span><b>${meta[id][0]}</b><button onclick="moveNav('${id}',-1)" ${i===0?'disabled':''}>↑</button><button onclick="moveNav('${id}',1)" ${i===cur.length-1?'disabled':''}>↓</button></div>`).join('')}</div>`}
 function cfg(first){return `<h2>${first?'Set up Flex Split':'Settings'}</h2><p class=mu>${SB_OK?'Synced with Supabase.':'Saved on this device; Supabase sync unavailable.'}${USER?' · '+esc(USER.email):''}</p><div class=c><b>Days you can train</b><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${[6,0,1,2,3,4,5].map(d=>`<button class="d ${S.days.includes(d)?'s':''}" onclick="td(${d})">${DN[d]}</button>`).join('')}</div>${S.days.length<3?'<div class=wr style="margin-top:8px">Aim for at least 3 days. 3 consistent beats 5 inconsistent.</div>':''}</div>
  <div class=c><div class=r>Units<select onchange="S.units=this.value;S.inc=this.value=='kg'?2.5:5;save();r()"><option ${S.units=='kg'?'selected':''}>kg</option><option ${S.units=='lb'?'selected':''}>lb</option></select></div>
  <div class=r style="margin-top:8px">Experience<select onchange="S.exp=this.value;save()"><option value=beginner ${S.exp=='beginner'?'selected':''}>Beginner</option><option value=advanced ${S.exp=='advanced'?'selected':''}>Advanced</option></select></div>
  <div class=r style="margin-top:8px">Start date<input type=date value="${S.start}" onchange="S.start=this.value;save()"></div>
  <div class=r style="margin-top:8px">Weight step<input type=number step=.5 style="width:90px" value="${inc()}" onchange="S.inc=+this.value;save()"></div></div>
+ ${first?'':navOrderUI()}
  ${first?'<button class=p onclick="S.setup=1;save();r()">Start</button>':'<button style="width:100%" onclick="cp(-1)">Copy all data for Sheets</button><button style="width:100%;margin-top:8px" onclick="rst()">'+(CF==='rst'?'Tap again to delete everything':'Reset data')+'</button><button style="width:100%;margin-top:8px" onclick="signOut()">Sign out</button>'}`}
 function td(d){const i=S.days.indexOf(d);i<0?S.days.push(d):S.days.splice(i,1);save();r()}
 const rows=()=>Object.keys(S.log).map(k=>{const[a,b,i]=k.split('|').map(Number);return{k:a,sl:b,i,e:S.log[k]}}).filter(x=>x.e.s.some(s=>s.w)).sort((p,q)=>p.k-q.k||p.sl-q.sl||p.i-q.i);
@@ -207,9 +238,9 @@ function cmp(){const Q=[...new Set(rows().map(x=>x.k+'|'+x.sl))];if(Q.length<2)r
 function del(k){if(CF!==k){CF=k;r();return}delete S.log[k];CF='';save();r()}
 function rst(){if(CF!=='rst'){CF='rst';r();return}try{localStorage.removeItem(userKey())}catch(e){}S=DEF();save();T='today';CF='';r()}
 function toast(t){const e=document.createElement('div');e.className='c';e.style.cssText='position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));text-align:center;z-index:9';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2500)}
-function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}if(!USER){$('nv').innerHTML='';$('app').innerHTML=authView();return}const tabs=[['today','Today','●'],['week','Week','▦'],['prog','Progress','↗'],['cmp','Compare','⇄'],['prg','Program','◫'],['cfg','Settings','⚙']];
- $('nv').innerHTML=S.setup?tabs.map(t=>`<button class="${T==t[0]?'on':''}" onclick="T='${t[0]}';CF='';ALT_EDIT='';r();scrollTo(0,0)"><span class=ni>${t[2]}</span><span>${t[1]}</span></button>`).join(''):'';
- $('app').innerHTML=(CP?`<div class=c><b>Select all, then copy</b><textarea rows=8 style="width:100%" readonly onfocus="this.select()">${esc(CP)}</textarea><button onclick="CP='';r()">Close</button></div>`:'')+(!S.setup?cfg(1):{today,week,prog,cmp,prg:()=>prg()+hist(),cfg}[T]())}
+function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}if(!USER){$('nv').innerHTML='';$('app').innerHTML=authView();return}const meta={today:['Today','●'],week:['Week','▦'],exs:['Exercises','▤'],prog:['Progress','↗'],cmp:['Compare','⇄'],prg:['Program','◫'],cfg:['Settings','⚙']},def=['today','week','exs','prog','cmp','prg','cfg'],order=(S.nav||def).filter(x=>meta[x]);def.forEach(x=>{if(!order.includes(x))order.push(x)});
+ $('nv').innerHTML=S.setup?order.map(id=>`<button class="${T==id?'on':''}" onclick="T='${id}';CF='';ALT_EDIT='';r();scrollTo(0,0)"><span class=ni>${meta[id][1]}</span><span>${meta[id][0]}</span></button>`).join(''):'';
+ $('app').innerHTML=(CP?`<div class=c><b>Select all, then copy</b><textarea rows=8 style="width:100%" readonly onfocus="this.select()">${esc(CP)}</textarea><button onclick="CP='';r()">Close</button></div>`:'')+(!S.setup?cfg(1):{today,week,exs,prog,cmp,prg:()=>prg()+hist(),cfg}[T]())}
 $('tm').onclick=()=>{te=0};
 setInterval(()=>{const e=$('tm');if(!te){e.hidden=1;return}const s=Math.ceil((te-Date.now())/1e3);if(s<=0){te=0;e.hidden=1;try{navigator.vibrate&&navigator.vibrate(300)}catch(x){}return}e.hidden=0;e.textContent='Rest '+(s/60|0)+':'+String(s%60).padStart(2,'0')+' · tap to skip'},500);
 r();
