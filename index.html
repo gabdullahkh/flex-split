@@ -566,6 +566,15 @@ function nextWeight(lg){
  if(!lg||!lg.s||lg.s.length<2||!lg.s.every(s=>+s.w>0&&+s.r>=10))return null;
  const mx=Math.max(...lg.s.map(s=>+s.w||0));return Math.round((mx+inc())*100)/100;
 }
+function previousSets(sl,i,nm,currentK){
+ let bestK=-1,found=null;
+ Object.keys(S.log||{}).forEach(key=>{
+  const parts=key.split('|').map(Number),k=parts[0],sli=parts[1],ii=parts[2],e=S.log[key];
+  if(k>=currentK||sli!==sl||ii!==i||!e||e.nm!==nm)return;
+  if(k>bestK&&e.s&&e.s.some(x=>x.w||x.r)){bestK=k;found=e}
+ });
+ return found&&found.s?found.s:null;
+}
 function restSeconds(key,compound){S.rt=S.rt||{};return +(S.rt[key]|| (compound?150:105))}
 function setRest(key,v){S.rt=S.rt||{};S.rt[key]=+v;save();r()}
 
@@ -573,6 +582,7 @@ function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U'
  let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">TODAY'S WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${sl%2?'LOWER':'UPPER'}</span></div><div class=statline><span class=pill>Week ${pw}/8</span><span class=pill>RIR ${pw<3?'2–3':'1–2'}</span><span class=pill>2 × 6–10</span><span class=pill>${sl}/4 this week</span></div><p class=mu style="margin-top:12px">${S.days.includes(wd(iso(new Date())))?'Scheduled training day':'Rest day — training is still available'} · ${S.exp==='beginner'?'Start lighter and focus on form':'Start heavy'}</p></div><button style="width:100%;margin:0 0 14px" onclick="T='exs';r();scrollTo(0,0)">▤ Browse & edit exercises</button>`;
  const seen={};
  ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i,lg=S.log[lk]||{s:[{},{}]},pl=S.log[(k-1)+'|'+sl+'|'+i];
+  if(!S.log[lk]){const prev=previousSets(sl,i,nm,k);if(prev){lg.s=[0,1].map(j=>({w:prev[j]?.w||'',r:prev[j]?.r||'',i:'',d:false}))}}
   const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
   const hit=x=>x&&x.s.length>1&&x.s.every(z=>+z.r>=10&&+z.w>0),wu=!seen[e[3]];seen[e[3]]=1;
   const pr=exercisePR(nm),suggest=nextWeight(lg),rs=restSeconds(key,e[2]);
