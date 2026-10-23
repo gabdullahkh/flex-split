@@ -479,18 +479,18 @@ nav{
 
 .focus-progress{height:7px;border-radius:99px;background:#0b0d12;overflow:hidden;margin-top:14px}.focus-progress span{display:block;height:100%;background:linear-gradient(90deg,#6f52ff,#9c86ff);border-radius:99px}
 .focus-toolbar{display:grid;grid-template-columns:46px 1fr 46px;gap:10px;align-items:center;margin-top:14px}.focus-toolbar button{height:46px;padding:0;font-size:25px}.focus-toolbar div{text-align:center}.focus-toolbar b{display:block;font-size:13px}.focus-toolbar span{display:block;color:var(--mu);font-size:11px;margin-top:2px}
-.exercise-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 2px 12px;scroll-snap-type:x proximity}.exercise-strip::-webkit-scrollbar{display:none}.exercise-strip button{flex:0 0 48px;width:48px;height:48px;min-height:48px;border-radius:15px;padding:0;display:grid;place-items:center;line-height:1;background:#0e1016;color:var(--mu)}.exercise-strip button b{font-size:14px}.exercise-strip button span{font-size:9px}.exercise-strip button.active{background:rgba(124,92,255,.22);color:#c4baff;border-color:rgba(167,139,250,.35)}.exercise-strip button.done{color:#52dda9}
+.exercise-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 0 12px;scroll-snap-type:none;overscroll-behavior-x:contain}.exercise-strip::-webkit-scrollbar{display:none}.exercise-strip button{flex:0 0 48px;width:48px;height:48px;min-height:48px;border-radius:15px;padding:0;display:grid;place-items:center;line-height:1;background:#0e1016;color:var(--mu)}.exercise-strip button b{font-size:14px}.exercise-strip button span{font-size:9px}.exercise-strip button.active{background:rgba(124,92,255,.22);color:#c4baff;border-color:rgba(167,139,250,.35)}.exercise-strip button.done{color:#52dda9}
 .focus-card{min-height:56vh}.focus-index{color:#a79cf8;font-size:10px;font-weight:900;letter-spacing:.1em;margin-bottom:5px}.focus-title{display:block;font-size:24px;line-height:1.08;letter-spacing:-.6px;max-width:320px}
 .set-head{display:grid;grid-template-columns:42px repeat(3,minmax(0,1fr)) 44px;gap:6px;color:#666d7b;font-size:9px;text-align:center;margin-top:16px;margin-bottom:-2px}
 .ghost-line{margin:3px 0 2px 48px;color:#646b79;font-size:10px;font-style:italic}
 .focus-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.focus-actions button{background:#101218}
 @media(max-width:420px){.focus-card{min-height:52vh}.focus-title{font-size:21px}.exercise-strip{margin-left:-2px;margin-right:-2px}.set-head{grid-template-columns:42px repeat(3,minmax(0,1fr)) 44px}}
 
-.exercise-strip button{scroll-snap-align:center;flex:0 0 calc((100% - 24px)/4)!important;width:calc((100% - 24px)/4)!important;height:62px!important;min-height:62px!important;padding:7px 6px!important;display:flex!important;flex-direction:column;justify-content:center;align-items:center;gap:4px}
+.exercise-strip button{scroll-snap-align:none;flex:0 0 calc((100% - 24px)/4)!important;width:calc((100% - 24px)/4)!important;height:62px!important;min-height:62px!important;padding:7px 6px!important;display:flex!important;flex-direction:column;justify-content:center;align-items:center;gap:4px}
 .exercise-strip button b{font-size:14px;line-height:1}
 .exercise-strip .ex-chip-label{font-size:10px!important;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;color:inherit}
 .exercise-strip button small{font-size:8px;line-height:1;color:inherit;opacity:.75}
-</style></head><body><div class="version-mark">UI v20</div><div id="app"></div><div id="tm" hidden></div>
+</style></head><body><div class="version-mark">UI v21</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -701,9 +701,11 @@ function ensureCurrentExercise(){
  const x=workoutCtx();if(CUR_EX<0||CUR_EX>=x.ty.length)CUR_EX=firstUnfinished();
 }
 function centerExerciseTab(){
- const rail=$('exerciseStrip'),tab=$('exTab_'+CUR_EX);if(!rail||!tab)return;
- const left=tab.offsetLeft-(rail.clientWidth-tab.offsetWidth)/2;
- rail.scrollLeft=Math.max(0,left);
+ const rail=$('exerciseStrip');if(!rail)return;
+ const x=workoutCtx(),visible=4,maxStart=Math.max(0,x.ty.length-visible);
+ const start=Math.max(0,Math.min(maxStart,CUR_EX-1));
+ const tab=$('exTab_'+start);if(!tab)return;
+ rail.scrollLeft=tab.offsetLeft;
 }
 function goExercise(i){
  const x=workoutCtx();CUR_EX=Math.max(0,Math.min(x.ty.length-1,+i||0));r();scrollTo(0,0);setTimeout(centerExerciseTab,0);
