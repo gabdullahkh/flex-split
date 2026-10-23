@@ -479,18 +479,18 @@ nav{
 
 .focus-progress{height:7px;border-radius:99px;background:#0b0d12;overflow:hidden;margin-top:14px}.focus-progress span{display:block;height:100%;background:linear-gradient(90deg,#6f52ff,#9c86ff);border-radius:99px}
 .focus-toolbar{display:grid;grid-template-columns:46px 1fr 46px;gap:10px;align-items:center;margin-top:14px}.focus-toolbar button{height:46px;padding:0;font-size:25px}.focus-toolbar div{text-align:center}.focus-toolbar b{display:block;font-size:13px}.focus-toolbar span{display:block;color:var(--mu);font-size:11px;margin-top:2px}
-.exercise-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 0 12px;scroll-snap-type:none;overscroll-behavior-x:contain}.exercise-strip::-webkit-scrollbar{display:none}.exercise-strip button{flex:0 0 48px;width:48px;height:48px;min-height:48px;border-radius:15px;padding:0;display:grid;place-items:center;line-height:1;background:#0e1016;color:var(--mu)}.exercise-strip button b{font-size:14px}.exercise-strip button span{font-size:9px}.exercise-strip button.active{background:rgba(124,92,255,.22);color:#c4baff;border-color:rgba(167,139,250,.35)}.exercise-strip button.done{color:#52dda9}
+.exercise-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:0 0 12px;overflow:visible}.exercise-strip::-webkit-scrollbar{display:none}.exercise-strip button{flex:0 0 48px;width:48px;height:48px;min-height:48px;border-radius:15px;padding:0;display:grid;place-items:center;line-height:1;background:#0e1016;color:var(--mu)}.exercise-strip button b{font-size:14px}.exercise-strip button span{font-size:9px}.exercise-strip button.active{background:rgba(124,92,255,.22);color:#c4baff;border-color:rgba(167,139,250,.35)}.exercise-strip button.done{color:#52dda9}
 .focus-card{min-height:56vh}.focus-index{color:#a79cf8;font-size:10px;font-weight:900;letter-spacing:.1em;margin-bottom:5px}.focus-title{display:block;font-size:24px;line-height:1.08;letter-spacing:-.6px;max-width:320px}
 .set-head{display:grid;grid-template-columns:42px repeat(3,minmax(0,1fr)) 44px;gap:6px;color:#666d7b;font-size:9px;text-align:center;margin-top:16px;margin-bottom:-2px}
 .ghost-line{margin:3px 0 2px 48px;color:#646b79;font-size:10px;font-style:italic}
 .focus-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.focus-actions button{background:#101218}
 @media(max-width:420px){.focus-card{min-height:52vh}.focus-title{font-size:21px}.exercise-strip{margin-left:-2px;margin-right:-2px}.set-head{grid-template-columns:42px repeat(3,minmax(0,1fr)) 44px}}
 
-.exercise-strip button{scroll-snap-align:none;flex:0 0 calc((100% - 24px)/4)!important;width:calc((100% - 24px)/4)!important;height:62px!important;min-height:62px!important;padding:7px 6px!important;display:flex!important;flex-direction:column;justify-content:center;align-items:center;gap:4px}
+.exercise-strip button{scroll-snap-align:none;flex:none!important;width:100%!important;height:62px!important;min-height:62px!important;padding:7px 6px!important;display:flex!important;flex-direction:column;justify-content:center;align-items:center;gap:4px}
 .exercise-strip button b{font-size:14px;line-height:1}
 .exercise-strip .ex-chip-label{font-size:10px!important;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;color:inherit}
 .exercise-strip button small{font-size:8px;line-height:1;color:inherit;opacity:.75}
-</style></head><body><div class="version-mark">UI v21</div><div id="app"></div><div id="tm" hidden></div>
+</style></head><body><div class="version-mark">UI v22</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -691,6 +691,10 @@ function shortExerciseLabel(name,muscle){
  if(n.includes('crunch'))return 'Abs';
  return String(muscle||'Exercise').replace(/\b\w/g,x=>x.toUpperCase());
 }
+function exerciseWindow(total){
+ const visible=4,maxStart=Math.max(0,total-visible);
+ return Math.max(0,Math.min(maxStart,CUR_EX-1));
+}
 function exerciseDone(k,sl,i){
  const e=S.log[k+'|'+sl+'|'+i];return !!(e&&e.s&&e.s.length>=2&&e.s.every(s=>s.d));
 }
@@ -700,13 +704,7 @@ function firstUnfinished(){
 function ensureCurrentExercise(){
  const x=workoutCtx();if(CUR_EX<0||CUR_EX>=x.ty.length)CUR_EX=firstUnfinished();
 }
-function centerExerciseTab(){
- const rail=$('exerciseStrip');if(!rail)return;
- const x=workoutCtx(),visible=4,maxStart=Math.max(0,x.ty.length-visible);
- const start=Math.max(0,Math.min(maxStart,CUR_EX-1));
- const tab=$('exTab_'+start);if(!tab)return;
- rail.scrollLeft=tab.offsetLeft;
-}
+function centerExerciseTab(){}
 function goExercise(i){
  const x=workoutCtx();CUR_EX=Math.max(0,Math.min(x.ty.length-1,+i||0));r();scrollTo(0,0);setTimeout(centerExerciseTab,0);
 }
@@ -740,7 +738,7 @@ function today(){
  const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
  let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">TODAY'S WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${sl%2?'LOWER':'UPPER'}</span></div><div class=statline><span class=pill>Week ${pw}/8</span><span class=pill>RIR ${pw<3?'2–3':'1–2'}</span><span class=pill>2 × 6–10</span><span class=pill>${sl}/4 this week</span></div><p class=mu style="margin-top:12px">${S.days.includes(wd(iso(new Date())))?'Scheduled training day':'Rest day — training is still available'} · ${S.exp==='beginner'?'Start lighter and focus on form':'Start heavy'}</p><div class=focus-progress><span style="width:${Math.round(doneCount/ty.length*100)}%"></span></div><div class=focus-toolbar><button onclick="moveExercise(-1)" ${i===0?'disabled':''}>‹</button><div><b>Exercise ${i+1} of ${ty.length}</b><span>Swipe left/right to move</span></div><button onclick="moveExercise(1)" ${i===ty.length-1?'disabled':''}>›</button></div></div>
  ${deload?`<div class=deload-tip><b>Deload suggested</b><span>Repeated performance drops were detected across recent matching sessions.</span></div>`:''}
- <div id="exerciseStrip" class=exercise-strip>${ty.map((x,j)=>{const kk=tk+j,cc=(S.ca&&S.ca[kk])||[],aa=x[4].concat(cc),ss=+(S.sw[kk]||0),sel=ss&&aa[ss-1]?aa[ss-1]:[x[0],x[1]];return `<button id="exTab_${j}" class="${j===i?'active':''} ${exerciseDone(k,sl,j)?'done':''}" onclick="goExercise(${j})"><b>${j+1}</b><span class=ex-chip-label>${esc(shortExerciseLabel(sel[0],x[3]))}</span>${exerciseDone(k,sl,j)?'<small>✓</small>':''}</button>`}).join('')}</div>
+ <div id="exerciseStrip" class=exercise-strip>${(()=>{const st=exerciseWindow(ty.length);return ty.slice(st,st+4).map((x,off)=>{const j=st+off,kk=tk+j,cc=(S.ca&&S.ca[kk])||[],aa=x[4].concat(cc),ss=+(S.sw[kk]||0),sel=ss&&aa[ss-1]?aa[ss-1]:[x[0],x[1]];return `<button id="exTab_${j}" class="${j===i?'active':''} ${exerciseDone(k,sl,j)?'done':''}" onclick="goExercise(${j})"><b>${j+1}</b><span class=ex-chip-label>${esc(shortExerciseLabel(sel[0],x[3]))}</span>${exerciseDone(k,sl,j)?'<small>✓</small>':''}</button>`}).join('')})()}</div>
  <div id=focusCard class="c focus-card" ontouchstart="swipeStart(event)" ontouchend="swipeEnd(event)">
    <div class=r><div><div class=focus-index>EXERCISE ${String(i+1).padStart(2,'0')}</div><b class=focus-title>${esc(nm)}</b></div><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
    <div class=mu>${e[3]} · Last: ${last}${pr?' · PR '+pr.w+S.units+'×'+(pr.r||'?'):''}</div>
