@@ -443,6 +443,30 @@ a{color:#a78bfa}
  .progression-tip{align-items:flex-start;flex-direction:column}
  .progression-tip span{text-align:left}
 }
+
+/* Navigation scroll fix */
+nav{
+  position:fixed!important;
+  left:8px!important;
+  right:8px!important;
+  bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;
+  z-index:1000!important;
+  isolation:isolate;
+  transform:translateZ(0);
+  -webkit-transform:translateZ(0);
+  will-change:transform;
+}
+.sticky-ex-head{
+  z-index:20!important;
+}
+#tm{
+  z-index:1100!important;
+}
+@media (display-mode:standalone){
+  nav{
+    bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;
+  }
+}
 </style></head><body><div class="version-mark">UI v4</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
