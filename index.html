@@ -490,7 +490,7 @@ nav{
 .exercise-strip button b{font-size:14px;line-height:1}
 .exercise-strip .ex-chip-label{font-size:10px!important;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;color:inherit}
 .exercise-strip button small{font-size:8px;line-height:1;color:inherit;opacity:.75}
-</style></head><body><div class="version-mark">UI v14</div><div id="app"></div><div id="tm" hidden></div>
+</style></head><body><div class="version-mark">UI v17</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -731,7 +731,7 @@ function today(){
  const {n,sl,k,ty,tk,pw}=workoutCtx(),i=CUR_EX,e=ty[i],key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i;
  const lg=S.log[lk]||{s:[{},{}]},prev=previousSets(sl,i,nm,k),pl=S.log[(k-1)+'|'+sl+'|'+i],pr=exercisePR(nm),suggest=nextWeight(lg),rs=restSeconds(key,e[2]),deload=deloadAdvice(sl,k),doneCount=ty.filter((_,j)=>exerciseDone(k,sl,j)).length;
  const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
- let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">FOCUSED WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${doneCount}/${ty.length}</span></div><div class=focus-progress><span style="width:${Math.round(doneCount/ty.length*100)}%"></span></div><div class=focus-toolbar><button onclick="moveExercise(-1)" ${i===0?'disabled':''}>‹</button><div><b>Exercise ${i+1} of ${ty.length}</b><span>Swipe left/right to move</span></div><button onclick="moveExercise(1)" ${i===ty.length-1?'disabled':''}>›</button></div></div>
+ let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">TODAY'S WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${sl%2?'LOWER':'UPPER'}</span></div><div class=statline><span class=pill>Week ${pw}/8</span><span class=pill>RIR ${pw<3?'2–3':'1–2'}</span><span class=pill>2 × 6–10</span><span class=pill>${sl}/4 this week</span></div><p class=mu style="margin-top:12px">${S.days.includes(wd(iso(new Date())))?'Scheduled training day':'Rest day — training is still available'} · ${S.exp==='beginner'?'Start lighter and focus on form':'Start heavy'}</p><div class=focus-progress><span style="width:${Math.round(doneCount/ty.length*100)}%"></span></div><div class=focus-toolbar><button onclick="moveExercise(-1)" ${i===0?'disabled':''}>‹</button><div><b>Exercise ${i+1} of ${ty.length}</b><span>Swipe left/right to move</span></div><button onclick="moveExercise(1)" ${i===ty.length-1?'disabled':''}>›</button></div></div>
  ${deload?`<div class=deload-tip><b>Deload suggested</b><span>Repeated performance drops were detected across recent matching sessions.</span></div>`:''}
  <div class=exercise-strip>${ty.map((x,j)=>{const kk=tk+j,cc=(S.ca&&S.ca[kk])||[],aa=x[4].concat(cc),ss=+(S.sw[kk]||0),sel=ss&&aa[ss-1]?aa[ss-1]:[x[0],x[1]];return `<button class="${j===i?'active':''} ${exerciseDone(k,sl,j)?'done':''}" onclick="goExercise(${j})"><b>${j+1}</b><span class=ex-chip-label>${esc(shortExerciseLabel(sel[0],x[3]))}</span>${exerciseDone(k,sl,j)?'<small>✓</small>':''}</button>`}).join('')}</div>
  <div id=focusCard class="c focus-card" ontouchstart="swipeStart(event)" ontouchend="swipeEnd(event)">
