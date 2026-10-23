@@ -486,11 +486,11 @@ nav{
 .focus-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.focus-actions button{background:#101218}
 @media(max-width:420px){.focus-card{min-height:52vh}.focus-title{font-size:21px}.exercise-strip{margin-left:-2px;margin-right:-2px}.set-head{grid-template-columns:42px repeat(3,minmax(0,1fr)) 44px}}
 
-.exercise-strip button{flex:0 0 82px!important;width:82px!important;height:62px!important;min-height:62px!important;padding:7px 6px!important;display:flex!important;flex-direction:column;justify-content:center;align-items:center;gap:2px}
+.exercise-strip button{flex:0 0 82px!important;width:82px!important;height:62px!important;min-height:62px!important;padding:7px 6px!important;display:flex!important;flex-direction:column;justify-content:center;align-items:center;gap:4px}
 .exercise-strip button b{font-size:14px;line-height:1}
 .exercise-strip .ex-chip-label{font-size:10px!important;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;color:inherit}
 .exercise-strip button small{font-size:8px;line-height:1;color:inherit;opacity:.75}
-</style></head><body><div class="version-mark">UI v12</div><div id="app"></div><div id="tm" hidden></div>
+</style></head><body><div class="version-mark">UI v13</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -733,7 +733,7 @@ function today(){
  const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
  let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">FOCUSED WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${doneCount}/${ty.length}</span></div><div class=focus-progress><span style="width:${Math.round(doneCount/ty.length*100)}%"></span></div><div class=focus-toolbar><button onclick="moveExercise(-1)" ${i===0?'disabled':''}>‹</button><div><b>Exercise ${i+1} of ${ty.length}</b><span>Swipe left/right to move</span></div><button onclick="moveExercise(1)" ${i===ty.length-1?'disabled':''}>›</button></div></div>
  ${deload?`<div class=deload-tip><b>Deload suggested</b><span>Repeated performance drops were detected across recent matching sessions.</span></div>`:''}
- <div class=exercise-strip>${ty.map((x,j)=>{const kk=tk+j,cc=(S.ca&&S.ca[kk])||[],aa=x[4].concat(cc),ss=+(S.sw[kk]||0),sel=ss&&aa[ss-1]?aa[ss-1]:[x[0],x[1]];return `<button class="${j===i?'active':''} ${exerciseDone(k,sl,j)?'done':''}" onclick="goExercise(${j})"><b>${j+1}</b><span class=ex-chip-label>${esc(shortExerciseLabel(sel[0],x[3]))}</span><small>${exerciseDone(k,sl,j)?'✓':'•'}</small></button>`}).join('')}</div>
+ <div class=exercise-strip>${ty.map((x,j)=>{const kk=tk+j,cc=(S.ca&&S.ca[kk])||[],aa=x[4].concat(cc),ss=+(S.sw[kk]||0),sel=ss&&aa[ss-1]?aa[ss-1]:[x[0],x[1]];return `<button class="${j===i?'active':''} ${exerciseDone(k,sl,j)?'done':''}" onclick="goExercise(${j})"><b>${j+1}</b><span class=ex-chip-label>${esc(shortExerciseLabel(sel[0],x[3]))}</span>${exerciseDone(k,sl,j)?'<small>✓</small>':''}</button>`}).join('')}</div>
  <div id=focusCard class="c focus-card" ontouchstart="swipeStart(event)" ontouchend="swipeEnd(event)">
    <div class=r><div><div class=focus-index>EXERCISE ${String(i+1).padStart(2,'0')}</div><b class=focus-title>${esc(nm)}</b></div><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
    <div class=mu>${e[3]} · Last: ${last}${pr?' · PR '+pr.w+S.units+'×'+(pr.r||'?'):''}</div>
