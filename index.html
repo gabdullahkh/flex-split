@@ -17,6 +17,17 @@ nav button{flex:1;border:0;background:none;font-size:12px;padding:10px 2px;borde
 #tm{position:fixed;left:12px;right:12px;bottom:calc(64px + env(safe-area-inset-bottom,0px));background:var(--ac);color:#fff;text-align:center;padding:12px;border-radius:12px;font-weight:700}
 .d{display:inline-flex;width:56px;justify-content:center}.d.s{background:var(--ac);color:#fff;border-color:var(--ac)}
 a{color:var(--ac)}table{border-collapse:collapse;font-size:13px;width:100%}td,th{border:1px solid var(--bd);padding:4px 6px;white-space:nowrap;text-align:left}summary{cursor:pointer}td button{min-height:32px;padding:2px 8px}.r{display:flex;justify-content:space-between;align-items:center;gap:8px}.w{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+body{background:radial-gradient(circle at 50% -120px,color-mix(in srgb,var(--ac) 8%,transparent),transparent 420px),var(--bg)}
+#app{padding:22px 16px 24px}h2{font-size:30px;letter-spacing:-.8px}
+.c{border-radius:20px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+.exercise-card{padding:18px;margin-bottom:14px}.exercise-title{font-size:18px;line-height:1.25}
+.watch{display:inline-flex;align-items:center;gap:5px;text-decoration:none;font-weight:650;white-space:nowrap}.watch:before{content:'▶';font-size:12px}
+.alt-row{display:flex;gap:8px;margin-top:12px}.alt-row select{flex:1;min-width:0}.alt-add{width:46px;flex:0 0 46px;font-size:22px;line-height:1;padding:0}
+.alt-editor{margin-top:10px;padding:12px;border:1px solid var(--bd);border-radius:14px;background:var(--bg)}.alt-editor input{width:100%;margin-top:8px}.alt-actions{display:flex;gap:8px;margin-top:8px}.alt-actions button{flex:1}
+nav{left:10px;right:10px;bottom:8px;border:1px solid var(--bd);border-radius:22px;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:var(--cd);box-shadow:0 12px 35px rgba(0,0,0,.28);overflow:hidden}
+nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;min-height:50px;padding:6px 2px;border-radius:15px;font-size:10px;color:var(--mu)}
+nav button .ni{font-size:17px;line-height:1}nav .on{background:rgba(255,90,60,.12);color:var(--ac);font-weight:700}
+#tm{bottom:calc(82px + env(safe-area-inset-bottom,0px));border-radius:16px}
 </style></head><body><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -46,14 +57,15 @@ const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice
 const ad=(s,k)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+k);return iso(d)},wd=s=>new Date(s+'T12:00:00').getDay();
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const lab=sl=>(sl%2?'Lower ':'Upper ')+(sl<2?1:2);
-const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},notes:{},inc:2.5,dates:{}});
+const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},ca:{},notes:{},inc:2.5,dates:{}});
 let S=DEF(),T='today',te=0,CF='',CP='';
 
 const SUPABASE_URL='https://coowfazvgbrvyumvjyfs.supabase.co';
 const SUPABASE_KEY='sb_publishable_hXvOFNYNxQERls14TkW9YA_yjoTjRaK';
 const SB_TABLE='flexsplit_state';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let USER=null,AUTH_READY=0,AUTH_MSG='',dbT=0,SB_OK=0;
+let USER=null,AUTH_READY=0,AUTH_MSG='',dbT=0,SB_OK=0,ALT_EDIT='';
+const EMAIL_KEY='flexsplit_email';
 const userKey=()=>USER?K+'_'+USER.id:K+'_signedout';
 
 function loadLocal(){
@@ -102,6 +114,7 @@ async function authInit(){
 async function signIn(){
  const email=($('ae')?.value||'').trim(),password=$('ap')?.value||'';
  AUTH_MSG='';if(!email||!password){AUTH_MSG='Enter email and password.';r();return}
+ try{localStorage.setItem(EMAIL_KEY,email)}catch(e){}
  const {error}=await sb.auth.signInWithPassword({email,password});
  AUTH_MSG=error?error.message:'';if(error)r();
 }
@@ -115,7 +128,7 @@ async function signUp(){
  r();
 }
 async function signOut(){await sb.auth.signOut();}
-function authView(){return `<h2>Flex Split</h2><p class=mu>Sign in to keep your workout data private and synced across your devices.</p><div class=c><input id=ae type=email autocomplete=email placeholder="Email" style="width:100%;margin-bottom:8px"><input id=ap type=password autocomplete=current-password placeholder="Password" style="width:100%;margin-bottom:8px"><button class=p onclick="signIn()">Sign in</button><button style="width:100%;margin-top:8px" onclick="signUp()">Create account</button>${AUTH_MSG?`<div class="${AUTH_MSG.startsWith('Account')?'ok':'wr'}" style="margin-top:10px">${esc(AUTH_MSG)}</div>`:''}</div>`}
+function authView(){let em='';try{em=localStorage.getItem(EMAIL_KEY)||''}catch(e){}return `<h2>Flex Split</h2><p class=mu>Sign in to keep your workout data private and synced across your devices.</p><div class=c><input id=ae type=email autocomplete=email placeholder="Email" value="${esc(em)}" style="width:100%;margin-bottom:8px"><input id=ap type=password autocomplete=current-password placeholder="Password" style="width:100%;margin-bottom:8px"><button class=p onclick="signIn()">Sign in</button><button style="width:100%;margin-top:8px" onclick="signUp()">Create account</button>${AUTH_MSG?`<div class="${AUTH_MSG.startsWith('Account')?'ok':'wr'}" style="margin-top:10px">${esc(AUTH_MSG)}</div>`:''}</div>`}
 authInit();
 
 function plan(c){const t=iso(new Date());let d=S.hold&&S.hold>t?S.hold:t;if(d<S.start)d=S.start;if(S.last&&S.last>=d)d=ad(S.last,1);
@@ -130,21 +143,24 @@ function badge(sl){return `<span class="b ${sl%2?'L':'U'}">${lab(sl)}</span>`}
 function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U',p=plan(1)[0];
  let h=`<div class=r><h2>${lab(sl)}</h2><span class=mu>${sl}/4 this week</span></div><p class=mu>Week ${pw} of 8 · Target RIR ${pw<3?'2–3':'1–2'} · 2 sets × 6–10 · ${S.exp==='beginner'?'Start lighter, focus on form':'Start heavy'}<br>${S.days.includes(wd(iso(new Date())))?'Training day today':'Rest day today (you can still train)'}</p>`;
  const seen={};
- ty.forEach((e,i)=>{const si=S.sw[tk+i]||0,a=si?e[4][si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i,lg=S.log[lk]||{s:[{},{}]},pl=S.log[(k-1)+'|'+sl+'|'+i];
+ ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i,lg=S.log[lk]||{s:[{},{}]},pl=S.log[(k-1)+'|'+sl+'|'+i];
   const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
   const hit=x=>x&&x.s.length>1&&x.s.every(z=>+z.r>=10&&+z.w>0),wu=!seen[e[3]];seen[e[3]]=1;
-  h+=`<div class=c><div class=r><b>${i+1}. ${esc(nm)}</b><a href="${a[1]}" target=_blank rel=noopener>▶ Watch</a></div>
+  h+=`<div class="c exercise-card"><div class=r><b class=exercise-title>${i+1}. ${esc(nm)}</b><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
   <div class=mu>${e[3]} · rest ${e[2]?'2–3 min':'90–120 s'} · Last time: ${last}</div>
   ${wu?'<div class=mu>Warm-up: 50%×5 · 75%×3 · 90%×1</div>':''}
   ${[0,1].map(j=>{const s=lg.s[j]||{};return `<div class=set><span class=mu>Set ${j+1}</span><input inputmode=decimal placeholder="${S.units}" value="${s.w||''}" oninput="sv('${lk}','${esc(nm)}',${j},'w',this.value)"><input inputmode=numeric placeholder=reps value="${s.r||''}" oninput="sv('${lk}','${esc(nm)}',${j},'r',this.value)"><input inputmode=numeric placeholder=RIR value="${s.i||''}" oninput="sv('${lk}','${esc(nm)}',${j},'i',this.value)"><button class="${s.d?'dn':''}" onclick="dn('${lk}','${esc(nm)}',${j},${e[2]})">✓</button></div>`}).join('')}
   ${hit(lg)||hit(pl)&&pl.nm===nm?`<div class=ok style="margin-top:8px">▲ Increase weight next time (+${inc()} ${S.units})</div>`:''}
-  <select style="margin-top:8px;width:100%" onchange="sw('${tk+i}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${e[4].map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>Swap: ${esc(x[0])}</option>`).join('')}</select></div>`});
+  <div class=alt-row><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Swap':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()" aria-label="Add alternative">＋</button></div>
+  ${ALT_EDIT===key?`<div class=alt-editor><b>Add alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://... video or exercise link"><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save alternative</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
+  </div>`});
  return h+`<div class=c><textarea style="width:100%" rows=2 placeholder="Session note" oninput="S.notes[S.n]=this.value;save()">${esc(S.notes[n])}</textarea></div>
  <button class=p onclick=fin()>Finish session</button>`}
 
 function sv(lk,nm,j,f,v){const e=S.log[lk]=S.log[lk]||{nm,s:[{},{}]};e.nm=nm;e.s[j][f]=v;save()}
 function dn(lk,nm,j,c){sv(lk,nm,j,'d',!(S.log[lk]&&S.log[lk].s[j].d));if(S.log[lk].s[j].d)te=Date.now()+(c?150:105)*1e3;r()}
 function sw(k,v){S.sw[k]=+v;save();r()}
+function addAlt(k){const name=($('an_'+k)?.value||'').trim(),url=($('au_'+k)?.value||'').trim();if(!name||!/^https?:\/\//i.test(url)){toast('Enter an exercise name and a valid link.');return}S.ca=S.ca||{};S.ca[k]=S.ca[k]||[];S.ca[k].push([name,url]);const base=k[0]==='U'?U:L,idx=+k.slice(1),defaults=(base[idx]&&base[idx][4]?base[idx][4].length:0);S.sw[k]=defaults+S.ca[k].length;ALT_EDIT='';save();r();toast('Alternative added.')}
 function fin(){const t=iso(new Date());if(S.last!==t)S.run=S.last===ad(t,-1)?S.run+1:1;S.last=t;S.dates=S.dates||{};S.dates[S.n]=t;S.n++;S.hold='';save();T='week';r();scrollTo(0,0)}
 function skip(){S.hold=ad(iso(new Date()),1);save();T='week';r()}
 function move(d){S.hold=d;save();r()}
@@ -191,8 +207,8 @@ function cmp(){const Q=[...new Set(rows().map(x=>x.k+'|'+x.sl))];if(Q.length<2)r
 function del(k){if(CF!==k){CF=k;r();return}delete S.log[k];CF='';save();r()}
 function rst(){if(CF!=='rst'){CF='rst';r();return}try{localStorage.removeItem(userKey())}catch(e){}S=DEF();save();T='today';CF='';r()}
 function toast(t){const e=document.createElement('div');e.className='c';e.style.cssText='position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));text-align:center;z-index:9';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2500)}
-function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}if(!USER){$('nv').innerHTML='';$('app').innerHTML=authView();return}const tabs=[['today','Today'],['week','Week'],['prog','Progress'],['cmp','Compare'],['prg','Program'],['cfg','Settings']];
- $('nv').innerHTML=S.setup?tabs.map(t=>`<button class="${T==t[0]?'on':''}" onclick="T='${t[0]}';CF='';r();scrollTo(0,0)">${t[1]}</button>`).join(''):'';
+function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}if(!USER){$('nv').innerHTML='';$('app').innerHTML=authView();return}const tabs=[['today','Today','●'],['week','Week','▦'],['prog','Progress','↗'],['cmp','Compare','⇄'],['prg','Program','◫'],['cfg','Settings','⚙']];
+ $('nv').innerHTML=S.setup?tabs.map(t=>`<button class="${T==t[0]?'on':''}" onclick="T='${t[0]}';CF='';ALT_EDIT='';r();scrollTo(0,0)"><span class=ni>${t[2]}</span><span>${t[1]}</span></button>`).join(''):'';
  $('app').innerHTML=(CP?`<div class=c><b>Select all, then copy</b><textarea rows=8 style="width:100%" readonly onfocus="this.select()">${esc(CP)}</textarea><button onclick="CP='';r()">Close</button></div>`:'')+(!S.setup?cfg(1):{today,week,prog,cmp,prg:()=>prg()+hist(),cfg}[T]())}
 $('tm').onclick=()=>{te=0};
 setInterval(()=>{const e=$('tm');if(!te){e.hidden=1;return}const s=Math.ceil((te-Date.now())/1e3);if(s<=0){te=0;e.hidden=1;try{navigator.vibrate&&navigator.vibrate(300)}catch(x){}return}e.hidden=0;e.textContent='Rest '+(s/60|0)+':'+String(s%60).padStart(2,'0')+' · tap to skip'},500);
