@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#07080b"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Flex Split"><meta name="format-detection" content="telephone=no"><link rel="manifest" href="./manifest.webmanifest?v=1"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%2307080b'/%3E%3Crect x='56' y='56' width='400' height='400' rx='94' fill='%236f52ff'/%3E%3Cpath d='M154 170h204v44H204v62h130v44H204v112h-50z' fill='white'/%3E%3C/svg%3E" type="image/svg+xml"><link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%2307080b'/%3E%3Crect x='56' y='56' width='400' height='400' rx='94' fill='%236f52ff'/%3E%3Cpath d='M154 170h204v44H204v62h130v44H204v112h-50z' fill='white'/%3E%3C/svg%3E"><title>Flex Split</title>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#07080b"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Flex Split"><meta name="format-detection" content="telephone=no"><link rel="manifest" href="./manifest.webmanifest?v=1"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%2307080b'/%3E%3Crect x='56' y='56' width='400' height='400' rx='94' fill='%236f52ff'/%3E%3Cpath d='M154 170h204v44H204v62h130v44H204v112h-50z' fill='white'/%3E%3C/svg%3E" type="image/svg+xml"><link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%2307080b'/%3E%3Crect x='56' y='56' width='400' height='400' rx='94' fill='%236f52ff'/%3E%3Cpath d='M154 170h204v44H204v62h130v44H204v112h-50z' fill='white'/%3E%3C/svg%3E"><title>Flex Split</title>
 <style>
 :root{--bg:#0d0d0f;--cd:#1a1a1e;--tx:#f2f2f2;--mu:#8b8b93;--ac:#ff5a3c;--ok:#3ecf8e;--bd:#2c2c33;box-sizing:border-box}
 @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f4f4f6;--cd:#fff;--tx:#111;--mu:#666;--bd:#ddd}}
@@ -490,7 +490,7 @@ nav{
 .exercise-strip button b{font-size:14px;line-height:1}
 .exercise-strip .ex-chip-label{font-size:10px!important;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;color:inherit}
 .exercise-strip button small{font-size:8px;line-height:1;color:inherit;opacity:.75}
-</style></head><body><div class="version-mark">UI v13</div><div id="app"></div><div id="tm" hidden></div>
+</style></head><body><div class="version-mark">UI v14</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -864,5 +864,21 @@ function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class
 $('tm').onclick=()=>{te=0};
 setInterval(()=>{const e=$('tm');if(!te){e.hidden=1;return}const s=Math.ceil((te-Date.now())/1e3);if(s<=0){te=0;e.hidden=1;try{navigator.vibrate&&navigator.vibrate(300)}catch(x){}return}e.hidden=0;e.textContent='Rest '+(s/60|0)+':'+String(s%60).padStart(2,'0')+' · tap to skip'},500);
 r();
+
+(function(){
+ let lastTouchEnd=0;
+ document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+ document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+ document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+ document.addEventListener('touchend',e=>{
+   const now=Date.now();
+   if(now-lastTouchEnd<=300)e.preventDefault();
+   lastTouchEnd=now;
+ },{passive:false});
+ document.addEventListener('touchmove',e=>{
+   if(e.touches&&e.touches.length>1)e.preventDefault();
+ },{passive:false});
+})();
+
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js?v=1').catch(()=>{}))}
 </script></body></html>
