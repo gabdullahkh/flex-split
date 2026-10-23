@@ -476,6 +476,15 @@ nav{
 .summary-grid .c{text-align:center;margin:0;padding:18px 10px}.summary-grid b{display:block;font-size:26px}.summary-grid span{display:block;color:var(--mu);font-size:12px;margin-top:3px}
 .volume-list{margin-top:14px}.volume-row{margin-top:12px}.volume-track{height:7px;margin-top:6px;border-radius:99px;background:#0b0d12;overflow:hidden}.volume-track span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#6f52ff,#9c86ff)}
 @media(max-width:420px){.summary-grid{gap:8px}.summary-grid .c{padding:15px 8px}.summary-grid b{font-size:23px}}
+
+.focus-progress{height:7px;border-radius:99px;background:#0b0d12;overflow:hidden;margin-top:14px}.focus-progress span{display:block;height:100%;background:linear-gradient(90deg,#6f52ff,#9c86ff);border-radius:99px}
+.focus-toolbar{display:grid;grid-template-columns:46px 1fr 46px;gap:10px;align-items:center;margin-top:14px}.focus-toolbar button{height:46px;padding:0;font-size:25px}.focus-toolbar div{text-align:center}.focus-toolbar b{display:block;font-size:13px}.focus-toolbar span{display:block;color:var(--mu);font-size:11px;margin-top:2px}
+.exercise-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 2px 12px}.exercise-strip::-webkit-scrollbar{display:none}.exercise-strip button{flex:0 0 48px;width:48px;height:48px;min-height:48px;border-radius:15px;padding:0;display:grid;place-items:center;line-height:1;background:#0e1016;color:var(--mu)}.exercise-strip button b{font-size:14px}.exercise-strip button span{font-size:9px}.exercise-strip button.active{background:rgba(124,92,255,.22);color:#c4baff;border-color:rgba(167,139,250,.35)}.exercise-strip button.done{color:#52dda9}
+.focus-card{min-height:56vh}.focus-index{color:#a79cf8;font-size:10px;font-weight:900;letter-spacing:.1em;margin-bottom:5px}.focus-title{display:block;font-size:24px;line-height:1.08;letter-spacing:-.6px;max-width:320px}
+.set-head{display:grid;grid-template-columns:42px repeat(3,minmax(0,1fr)) 44px;gap:6px;color:#666d7b;font-size:9px;text-align:center;margin-top:16px;margin-bottom:-2px}
+.ghost-line{margin:3px 0 2px 48px;color:#646b79;font-size:10px;font-style:italic}
+.focus-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.focus-actions button{background:#101218}
+@media(max-width:420px){.focus-card{min-height:52vh}.focus-title{font-size:21px}.exercise-strip{margin-left:-2px;margin-right:-2px}.set-head{grid-template-columns:42px repeat(3,minmax(0,1fr)) 44px}}
 </style></head><body><div class="version-mark">UI v4</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -506,7 +515,7 @@ const ad=(s,k)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+k);return
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const lab=sl=>(sl%2?'Lower ':'Upper ')+(sl<2?1:2);
 const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},ca:{},rt:{},notes:{},inc:2.5,dates:{},nav:['today','exs','week','prog','cmp','prg','cfg']});
-let S=DEF(),T='today',te=0,CF='',CP='',EX_DAY=0;
+let S=DEF(),T='today',te=0,CF='',CP='',EX_DAY=0,CUR_EX=0,UNDO_STACK=[],SWIPE_X=0;
 
 const SUPABASE_URL='https://coowfazvgbrvyumvjyfs.supabase.co';
 const SUPABASE_KEY='sb_publishable_hXvOFNYNxQERls14TkW9YA_yjoTjRaK';
@@ -654,33 +663,73 @@ function sessionSummary(k,sl){
 }
 function restSeconds(key,compound){S.rt=S.rt||{};return +(S.rt[key]|| (compound?150:105))}
 function setRest(key,v){S.rt=S.rt||{};S.rt[key]=+v;save();r()}
+function workoutCtx(){
+ const n=S.n,sl=n%4,k=n/4|0,ty=sl%2?L:U,tk=sl%2?'L':'U';
+ return {n,sl,k,ty,tk,pw:k%8+1};
+}
+function exerciseDone(k,sl,i){
+ const e=S.log[k+'|'+sl+'|'+i];return !!(e&&e.s&&e.s.length>=2&&e.s.every(s=>s.d));
+}
+function firstUnfinished(){
+ const x=workoutCtx();for(let i=0;i<x.ty.length;i++)if(!exerciseDone(x.k,x.sl,i))return i;return Math.max(0,x.ty.length-1);
+}
+function ensureCurrentExercise(){
+ const x=workoutCtx();if(CUR_EX<0||CUR_EX>=x.ty.length)CUR_EX=firstUnfinished();
+}
+function goExercise(i){
+ const x=workoutCtx();CUR_EX=Math.max(0,Math.min(x.ty.length-1,+i||0));r();scrollTo(0,0);
+}
+function moveExercise(dir){
+ const x=workoutCtx();goExercise(Math.max(0,Math.min(x.ty.length-1,CUR_EX+dir)));
+}
+function swipeStart(e){SWIPE_X=e.touches&&e.touches[0]?e.touches[0].clientX:0}
+function swipeEnd(e){
+ const x=e.changedTouches&&e.changedTouches[0]?e.changedTouches[0].clientX:SWIPE_X,d=x-SWIPE_X;
+ if(Math.abs(d)>55)moveExercise(d<0?1:-1);
+}
+function pushUndo(label){
+ try{UNDO_STACK.push({label,S:JSON.stringify(S),T,CUR_EX});if(UNDO_STACK.length>8)UNDO_STACK.shift()}catch(e){}
+}
+function undoLast(){
+ const u=UNDO_STACK.pop();if(!u){toast('Nothing to undo.');return}
+ try{S=Object.assign(DEF(),JSON.parse(u.S));S.rt=S.rt||{};T=u.T;CUR_EX=u.CUR_EX;save();r();scrollTo(0,0);toast('Undid '+u.label+'.')}catch(e){}
+}
+function smartNext(id){
+ const el=$(id);if(el){el.focus();try{el.select()}catch(e){}}
+}
+function focusAfterSet(j){
+ if(j===0){const id='w_1';smartNext(id)}
+ else{const x=workoutCtx();if(CUR_EX<x.ty.length-1){CUR_EX++;r();scrollTo(0,0)}}
+}
 
-function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U',p=plan(1)[0];
- const deload=deloadAdvice(sl,k);
- let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">TODAY'S WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${sl%2?'LOWER':'UPPER'}</span></div><div class=statline><span class=pill>Week ${pw}/8</span><span class=pill>RIR ${pw<3?'2–3':'1–2'}</span><span class=pill>2 × 6–10</span><span class=pill>${sl}/4 this week</span></div><p class=mu style="margin-top:12px">${S.days.includes(wd(iso(new Date())))?'Scheduled training day':'Rest day — training is still available'} · ${S.exp==='beginner'?'Start lighter and focus on form':'Start heavy'}</p></div>${deload?`<div class=deload-tip><b>Deload suggested</b><span>Performance dropped in ${deload.count} exercises across the last 3 matching sessions. Consider reducing load or sets for this workout.</span></div>`:''}<button style="width:100%;margin:0 0 14px" onclick="T='exs';r();scrollTo(0,0)">▤ Browse & edit exercises</button>`;
- const seen={};
- ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i,lg=S.log[lk]||{s:[{},{}]},pl=S.log[(k-1)+'|'+sl+'|'+i];
-  if(!S.log[lk]){const prev=previousSets(sl,i,nm,k);if(prev){lg.s=[0,1].map(j=>({w:prev[j]?.w||'',r:prev[j]?.r||'',i:'',d:false}))}}
-  const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
-  const hit=x=>x&&x.s.length>1&&x.s.every(z=>+z.r>=10&&+z.w>0),wu=!seen[e[3]];seen[e[3]]=1;
-  const pr=exercisePR(nm),suggest=nextWeight(lg),rs=restSeconds(key,e[2]);
-  h+=`<div class="c exercise-card"><div class="r sticky-ex-head"><b class=exercise-title>${i+1}. ${esc(nm)}</b><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
-  <div class=mu>${e[3]} · Last time: ${last}${pr?' · PR '+pr.w+S.units+'×'+(pr.r||'?'):''}</div>
-  ${wu?'<div class=mu>Warm-up: 50%×5 · 75%×3 · 90%×1</div>':''}
-  <div class="r rest-row"><span class=mu>Rest timer</span><select onchange="setRest('${key}',this.value)"><option value=60 ${rs===60?'selected':''}>1:00</option><option value=90 ${rs===90?'selected':''}>1:30</option><option value=105 ${rs===105?'selected':''}>1:45</option><option value=120 ${rs===120?'selected':''}>2:00</option><option value=150 ${rs===150?'selected':''}>2:30</option><option value=180 ${rs===180?'selected':''}>3:00</option><option value=240 ${rs===240?'selected':''}>4:00</option></select></div>
-  ${[0,1].map(j=>{const s=lg.s[j]||{},prNow=setBeatsPR(nm,s,lk),pid='pr_'+lk.replace(/\\|/g,'_')+'_'+j;return `<div class=set-wrap><div class=set><span class=mu>Set ${j+1}</span><input inputmode=decimal placeholder="${S.units}" value="${s.w||''}" oninput="sv('${lk}','${esc(nm)}',${j},'w',this.value);markPR('${lk}','${esc(nm)}',${j})"><input inputmode=numeric placeholder=reps value="${s.r||''}" oninput="sv('${lk}','${esc(nm)}',${j},'r',this.value);markPR('${lk}','${esc(nm)}',${j})"><input inputmode=numeric placeholder=RIR value="${s.i||''}" oninput="sv('${lk}','${esc(nm)}',${j},'i',this.value)"><button class="${s.d?'dn':''}" onclick="dn('${lk}','${esc(nm)}',${j},${rs})">✓</button></div><div id="${pid}" class=set-pr ${prNow?'':'hidden'}>★ New PR</div></div>`}).join('')}
-  ${suggest?`<div class=progression-tip><b>Next time: ${suggest} ${S.units}</b><span>Both sets reached the rep target.</span></div>`:''}
-  <div class=alt-row><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Swap':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()" aria-label="Add alternative">＋</button></div>
-  ${ALT_EDIT===key?`<div class=alt-editor><b>Add alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://... video or exercise link"><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save alternative</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
-  </div>`});
- return h+`<div class=c><textarea style="width:100%" rows=2 placeholder="Session note" oninput="S.notes[S.n]=this.value;save()">${esc(S.notes[n])}</textarea></div>
- <button class=p onclick=fin()>Finish session</button>`}
-
+function today(){
+ ensureCurrentExercise();
+ const {n,sl,k,ty,tk,pw}=workoutCtx(),i=CUR_EX,e=ty[i],key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i;
+ const lg=S.log[lk]||{s:[{},{}]},prev=previousSets(sl,i,nm,k),pl=S.log[(k-1)+'|'+sl+'|'+i],pr=exercisePR(nm),suggest=nextWeight(lg),rs=restSeconds(key,e[2]),deload=deloadAdvice(sl,k),doneCount=ty.filter((_,j)=>exerciseDone(k,sl,j)).length;
+ const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
+ let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">FOCUSED WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${doneCount}/${ty.length}</span></div><div class=focus-progress><span style="width:${Math.round(doneCount/ty.length*100)}%"></span></div><div class=focus-toolbar><button onclick="moveExercise(-1)" ${i===0?'disabled':''}>‹</button><div><b>Exercise ${i+1} of ${ty.length}</b><span>Swipe left/right to move</span></div><button onclick="moveExercise(1)" ${i===ty.length-1?'disabled':''}>›</button></div></div>
+ ${deload?`<div class=deload-tip><b>Deload suggested</b><span>Repeated performance drops were detected across recent matching sessions.</span></div>`:''}
+ <div class=exercise-strip>${ty.map((x,j)=>`<button class="${j===i?'active':''} ${exerciseDone(k,sl,j)?'done':''}" onclick="goExercise(${j})"><b>${j+1}</b><span>${exerciseDone(k,sl,j)?'✓':'•'}</span></button>`).join('')}</div>
+ <div id=focusCard class="c focus-card" ontouchstart="swipeStart(event)" ontouchend="swipeEnd(event)">
+   <div class=r><div><div class=focus-index>EXERCISE ${String(i+1).padStart(2,'0')}</div><b class=focus-title>${esc(nm)}</b></div><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
+   <div class=mu>${e[3]} · Last: ${last}${pr?' · PR '+pr.w+S.units+'×'+(pr.r||'?'):''}</div>
+   <div class="r rest-row"><span class=mu>Rest timer</span><select onchange="setRest('${key}',this.value)"><option value=60 ${rs===60?'selected':''}>1:00</option><option value=90 ${rs===90?'selected':''}>1:30</option><option value=105 ${rs===105?'selected':''}>1:45</option><option value=120 ${rs===120?'selected':''}>2:00</option><option value=150 ${rs===150?'selected':''}>2:30</option><option value=180 ${rs===180?'selected':''}>3:00</option><option value=240 ${rs===240?'selected':''}>4:00</option></select></div>
+   <div class=set-head><span></span><span>${S.units.toUpperCase()}</span><span>REPS</span><span>RIR</span><span></span></div>
+   ${[0,1].map(j=>{const s=lg.s[j]||{},pv=prev&&prev[j]?prev[j]:{},prNow=setBeatsPR(nm,s,lk),pid='pr_'+lk.replace(/\\|/g,'_')+'_'+j;return `<div class=set-wrap><div class=set><span class=mu>Set ${j+1}</span><input id="w_${j}" enterkeyhint=next inputmode=decimal placeholder="${pv.w||S.units}" value="${s.w||''}" oninput="sv('${lk}','${esc(nm)}',${j},'w',this.value);markPR('${lk}','${esc(nm)}',${j})" onkeydown="if(event.key==='Enter'){event.preventDefault();smartNext('r_${j}')}"><input id="r_${j}" enterkeyhint=next inputmode=numeric placeholder="${pv.r||'reps'}" value="${s.r||''}" oninput="sv('${lk}','${esc(nm)}',${j},'r',this.value);markPR('${lk}','${esc(nm)}',${j})" onkeydown="if(event.key==='Enter'){event.preventDefault();smartNext('i_${j}')}"><input id="i_${j}" enterkeyhint=done inputmode=numeric placeholder="RIR" value="${s.i||''}" oninput="sv('${lk}','${esc(nm)}',${j},'i',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();dn('${lk}','${esc(nm)}',${j},${rs})}"><button class="${s.d?'dn':''}" onclick="dn('${lk}','${esc(nm)}',${j},${rs})">✓</button></div><div id="${pid}" class=set-pr ${prNow?'':'hidden'}>★ New PR</div>${(!s.w||!s.r)&&pv&&(+pv.w||+pv.r)?`<div class=ghost-line>Previous: ${pv.w||'—'} ${S.units} × ${pv.r||'—'}</div>`:''}</div>`}).join('')}
+   ${suggest?`<div class=progression-tip><b>Next time: ${suggest} ${S.units}</b><span>Both sets reached the rep target.</span></div>`:''}
+   <div class=alt-row><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Swap':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()">＋</button></div>
+   ${ALT_EDIT===key?`<div class=alt-editor><b>Add alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://..."><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
+ </div>
+ <div class=focus-actions><button onclick="undoLast()" ${UNDO_STACK.length?'':'disabled'}>↶ Undo</button><button onclick="T='exs';r();scrollTo(0,0)">Edit exercises</button></div>
+ <div class=c><textarea style="width:100%" rows=2 placeholder="Session note" oninput="S.notes[S.n]=this.value;save()">${esc(S.notes[n])}</textarea></div>
+ <button class=p onclick=fin()>Finish session</button>`;
+ return h;
+}
 function sv(lk,nm,j,f,v){const e=S.log[lk]=S.log[lk]||{nm,s:[{},{}]};e.nm=nm;e.s[j][f]=v;save()}
-function dn(lk,nm,j,secs){sv(lk,nm,j,'d',!(S.log[lk]&&S.log[lk].s[j].d));if(S.log[lk].s[j].d)te=Date.now()+(+secs||105)*1e3;r()}
+function dn(lk,nm,j,secs){pushUndo('set completion');sv(lk,nm,j,'d',!(S.log[lk]&&S.log[lk].s[j].d));const done=S.log[lk]&&S.log[lk].s[j].d;if(done)te=Date.now()+(+secs||105)*1e3;const parts=lk.split('|').map(Number),exDone=exerciseDone(parts[0],parts[1],parts[2]);if(exDone){const x=workoutCtx();if(CUR_EX<x.ty.length-1)CUR_EX++}r();if(!exDone&&done&&j===0)setTimeout(()=>smartNext('w_1'),0);scrollTo(0,0)}
 function sw(k,v){S.sw[k]=+v;save();r()}
 function addAlt(k){const name=($('an_'+k)?.value||'').trim(),url=($('au_'+k)?.value||'').trim();if(!name||!/^https?:\/\//i.test(url)){toast('Enter an exercise name and a valid link.');return}S.ca=S.ca||{};S.ca[k]=S.ca[k]||[];S.ca[k].push([name,url]);const base=k[0]==='U'?U:L,idx=+k.slice(1),defaults=(base[idx]&&base[idx][4]?base[idx][4].length:0);S.sw[k]=defaults+S.ca[k].length;ALT_EDIT='';save();r();toast('Alternative added.')}
-function fin(){const t=iso(new Date()),n=S.n,sl=n%4,k=n/4|0;S.lastSummary=sessionSummary(k,sl);if(S.last!==t)S.run=S.last===ad(t,-1)?S.run+1:1;S.last=t;S.dates=S.dates||{};S.dates[S.n]=t;S.n++;S.hold='';save();T='summary';r();scrollTo(0,0)}
+function fin(){pushUndo('Finish Session');const t=iso(new Date()),n=S.n,sl=n%4,k=n/4|0;S.lastSummary=sessionSummary(k,sl);if(S.last!==t)S.run=S.last===ad(t,-1)?S.run+1:1;S.last=t;S.dates=S.dates||{};S.dates[S.n]=t;S.n++;S.hold='';save();CUR_EX=0;T='summary';r();scrollTo(0,0)}
 function skip(){S.hold=ad(iso(new Date()),1);save();T='week';r()}
 function move(d){S.hold=d;save();r()}
 
@@ -690,7 +739,7 @@ function summary(){
  return `<div class=hero><div class=mu style="margin:0 0 5px">SESSION COMPLETE</div><h2>${lab(x.sl)}</h2><p class=mu>${x.date}</p></div>
  <div class=summary-grid><div class=c><b>${x.exercises}</b><span>Exercises</span></div><div class=c><b>${x.sets}</b><span>Logged sets</span></div><div class=c><b>${vol.toLocaleString()}</b><span>Volume (${S.units}·reps)</span></div><div class=c><b>${x.prs}</b><span>PR sets</span></div></div>
  ${x.prs?'<div class=progression-tip><b>Strong session</b><span>You set '+x.prs+' new set-level PR'+(x.prs===1?'':'s')+'.</span></div>':''}
- <button class=p onclick="T='week';r();scrollTo(0,0)">View week</button><button style="width:100%;margin-top:10px" onclick="T='today';r();scrollTo(0,0)">Back to Today</button>`;
+ <button class=p onclick="T='week';r();scrollTo(0,0)">View week</button><button style="width:100%;margin-top:10px" onclick="undoLast()">↶ Undo Finish Session</button><button style="width:100%;margin-top:10px" onclick="T='today';r();scrollTo(0,0)">Back to Today</button>`;
 }
 
 function week(){const t=iso(new Date()),st=ad(t,-((wd(t)+1)%7)),D=S.dates||{};
