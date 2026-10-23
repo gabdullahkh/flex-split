@@ -467,6 +467,15 @@ nav{
     bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;
   }
 }
+
+.set-wrap{position:relative}
+.set-pr{margin:4px 0 2px 50px;color:#facc15;font-size:11px;font-weight:800;letter-spacing:.02em}
+.deload-tip{display:flex;flex-direction:column;gap:4px;margin:0 0 14px;padding:13px 14px;border-radius:16px;background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.20)}
+.deload-tip b{color:#facc15}.deload-tip span{color:var(--mu);font-size:13px;line-height:1.45}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.summary-grid .c{text-align:center;margin:0;padding:18px 10px}.summary-grid b{display:block;font-size:26px}.summary-grid span{display:block;color:var(--mu);font-size:12px;margin-top:3px}
+.volume-list{margin-top:14px}.volume-row{margin-top:12px}.volume-track{height:7px;margin-top:6px;border-radius:99px;background:#0b0d12;overflow:hidden}.volume-track span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#6f52ff,#9c86ff)}
+@media(max-width:420px){.summary-grid{gap:8px}.summary-grid .c{padding:15px 8px}.summary-grid b{font-size:23px}}
 </style></head><body><div class="version-mark">UI v4</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -599,11 +608,56 @@ function previousSets(sl,i,nm,currentK){
  });
  return found&&found.s?found.s:null;
 }
+function priorPR(nm,excludeKey){
+ let best=null;
+ Object.entries(S.log||{}).forEach(([key,e])=>{
+  if(key===excludeKey||!e||e.nm!==nm)return;
+  (e.s||[]).forEach(s=>{const w=+s.w||0,r=+s.r||0;if(!w)return;if(!best||w>best.w||(w===best.w&&r>best.r))best={w,r}})
+ });
+ return best;
+}
+function setBeatsPR(nm,s,excludeKey){
+ if(!s||!+s.w)return false;
+ const p=priorPR(nm,excludeKey);if(!p)return true;
+ return +s.w>p.w||(+s.w===p.w&&(+s.r||0)>p.r);
+}
+function markPR(lk,nm,j){
+ const el=$('pr_'+lk.replace(/\|/g,'_')+'_'+j);if(!el)return;
+ const s=S.log[lk]&&S.log[lk].s[j];
+ el.hidden=!setBeatsPR(nm,s,lk);
+}
+function scoreEntry(e){const b=best(e);return b&&+b.w&&+b.r?(+b.w)*(+b.r):0}
+function deloadAdvice(sl,currentK){
+ const ty=sl%2?L:U;let drops=0,names=[];
+ ty.forEach((ex,i)=>{
+  const arr=[];
+  for(let k=currentK-3;k<currentK;k++){const e=S.log[k+'|'+sl+'|'+i];if(e&&e.nm){const s=scoreEntry(e);if(s)arr.push({s,n:e.nm})}}
+  if(arr.length===3&&arr[1].s<arr[0].s*.97&&arr[2].s<arr[1].s*.97){drops++;names.push(arr[2].n)}
+ });
+ return drops>=2?{count:drops,names}:null;
+}
+function muscleFor(sl,i){const ty=sl%2?L:U;return ty[i]?ty[i][3]:'other'}
+function weeklyVolume(k){
+ const out={};
+ Object.entries(S.log||{}).forEach(([key,e])=>{
+  const [wk,sl,i]=key.split('|').map(Number);if(wk!==k||!e)return;
+  const m=muscleFor(sl,i);let v=0;(e.s||[]).forEach(s=>{v+=(+s.w||0)*(+s.r||0)});
+  if(v)out[m]=(out[m]||0)+v;
+ });
+ return out;
+}
+function sessionSummary(k,sl){
+ let sets=0,volume=0,prs=0,exercises=0;
+ const ty=sl%2?L:U;
+ ty.forEach((_,i)=>{const key=k+'|'+sl+'|'+i,e=S.log[key];if(!e)return;let used=false;(e.s||[]).forEach(s=>{if(+s.w||+s.r){used=true;sets++;volume+=(+s.w||0)*(+s.r||0);if(setBeatsPR(e.nm,s,key))prs++}});if(used)exercises++});
+ return {k,sl,sets,volume,prs,exercises,date:iso(new Date())};
+}
 function restSeconds(key,compound){S.rt=S.rt||{};return +(S.rt[key]|| (compound?150:105))}
 function setRest(key,v){S.rt=S.rt||{};S.rt[key]=+v;save();r()}
 
 function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U',p=plan(1)[0];
- let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">TODAY'S WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${sl%2?'LOWER':'UPPER'}</span></div><div class=statline><span class=pill>Week ${pw}/8</span><span class=pill>RIR ${pw<3?'2–3':'1–2'}</span><span class=pill>2 × 6–10</span><span class=pill>${sl}/4 this week</span></div><p class=mu style="margin-top:12px">${S.days.includes(wd(iso(new Date())))?'Scheduled training day':'Rest day — training is still available'} · ${S.exp==='beginner'?'Start lighter and focus on form':'Start heavy'}</p></div><button style="width:100%;margin:0 0 14px" onclick="T='exs';r();scrollTo(0,0)">▤ Browse & edit exercises</button>`;
+ const deload=deloadAdvice(sl,k);
+ let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">TODAY'S WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${sl%2?'LOWER':'UPPER'}</span></div><div class=statline><span class=pill>Week ${pw}/8</span><span class=pill>RIR ${pw<3?'2–3':'1–2'}</span><span class=pill>2 × 6–10</span><span class=pill>${sl}/4 this week</span></div><p class=mu style="margin-top:12px">${S.days.includes(wd(iso(new Date())))?'Scheduled training day':'Rest day — training is still available'} · ${S.exp==='beginner'?'Start lighter and focus on form':'Start heavy'}</p></div>${deload?`<div class=deload-tip><b>Deload suggested</b><span>Performance dropped in ${deload.count} exercises across the last 3 matching sessions. Consider reducing load or sets for this workout.</span></div>`:''}<button style="width:100%;margin:0 0 14px" onclick="T='exs';r();scrollTo(0,0)">▤ Browse & edit exercises</button>`;
  const seen={};
  ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i,lg=S.log[lk]||{s:[{},{}]},pl=S.log[(k-1)+'|'+sl+'|'+i];
   if(!S.log[lk]){const prev=previousSets(sl,i,nm,k);if(prev){lg.s=[0,1].map(j=>({w:prev[j]?.w||'',r:prev[j]?.r||'',i:'',d:false}))}}
@@ -614,7 +668,7 @@ function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U'
   <div class=mu>${e[3]} · Last time: ${last}${pr?' · PR '+pr.w+S.units+'×'+(pr.r||'?'):''}</div>
   ${wu?'<div class=mu>Warm-up: 50%×5 · 75%×3 · 90%×1</div>':''}
   <div class="r rest-row"><span class=mu>Rest timer</span><select onchange="setRest('${key}',this.value)"><option value=60 ${rs===60?'selected':''}>1:00</option><option value=90 ${rs===90?'selected':''}>1:30</option><option value=105 ${rs===105?'selected':''}>1:45</option><option value=120 ${rs===120?'selected':''}>2:00</option><option value=150 ${rs===150?'selected':''}>2:30</option><option value=180 ${rs===180?'selected':''}>3:00</option><option value=240 ${rs===240?'selected':''}>4:00</option></select></div>
-  ${[0,1].map(j=>{const s=lg.s[j]||{};return `<div class=set><span class=mu>Set ${j+1}</span><input inputmode=decimal placeholder="${S.units}" value="${s.w||''}" oninput="sv('${lk}','${esc(nm)}',${j},'w',this.value)"><input inputmode=numeric placeholder=reps value="${s.r||''}" oninput="sv('${lk}','${esc(nm)}',${j},'r',this.value)"><input inputmode=numeric placeholder=RIR value="${s.i||''}" oninput="sv('${lk}','${esc(nm)}',${j},'i',this.value)"><button class="${s.d?'dn':''}" onclick="dn('${lk}','${esc(nm)}',${j},${rs})">✓</button></div>`}).join('')}
+  ${[0,1].map(j=>{const s=lg.s[j]||{},prNow=setBeatsPR(nm,s,lk),pid='pr_'+lk.replace(/\\|/g,'_')+'_'+j;return `<div class=set-wrap><div class=set><span class=mu>Set ${j+1}</span><input inputmode=decimal placeholder="${S.units}" value="${s.w||''}" oninput="sv('${lk}','${esc(nm)}',${j},'w',this.value);markPR('${lk}','${esc(nm)}',${j})"><input inputmode=numeric placeholder=reps value="${s.r||''}" oninput="sv('${lk}','${esc(nm)}',${j},'r',this.value);markPR('${lk}','${esc(nm)}',${j})"><input inputmode=numeric placeholder=RIR value="${s.i||''}" oninput="sv('${lk}','${esc(nm)}',${j},'i',this.value)"><button class="${s.d?'dn':''}" onclick="dn('${lk}','${esc(nm)}',${j},${rs})">✓</button></div><div id="${pid}" class=set-pr ${prNow?'':'hidden'}>★ New PR</div></div>`}).join('')}
   ${suggest?`<div class=progression-tip><b>Next time: ${suggest} ${S.units}</b><span>Both sets reached the rep target.</span></div>`:''}
   <div class=alt-row><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Swap':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()" aria-label="Add alternative">＋</button></div>
   ${ALT_EDIT===key?`<div class=alt-editor><b>Add alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://... video or exercise link"><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save alternative</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
@@ -626,9 +680,18 @@ function sv(lk,nm,j,f,v){const e=S.log[lk]=S.log[lk]||{nm,s:[{},{}]};e.nm=nm;e.s
 function dn(lk,nm,j,secs){sv(lk,nm,j,'d',!(S.log[lk]&&S.log[lk].s[j].d));if(S.log[lk].s[j].d)te=Date.now()+(+secs||105)*1e3;r()}
 function sw(k,v){S.sw[k]=+v;save();r()}
 function addAlt(k){const name=($('an_'+k)?.value||'').trim(),url=($('au_'+k)?.value||'').trim();if(!name||!/^https?:\/\//i.test(url)){toast('Enter an exercise name and a valid link.');return}S.ca=S.ca||{};S.ca[k]=S.ca[k]||[];S.ca[k].push([name,url]);const base=k[0]==='U'?U:L,idx=+k.slice(1),defaults=(base[idx]&&base[idx][4]?base[idx][4].length:0);S.sw[k]=defaults+S.ca[k].length;ALT_EDIT='';save();r();toast('Alternative added.')}
-function fin(){const t=iso(new Date());if(S.last!==t)S.run=S.last===ad(t,-1)?S.run+1:1;S.last=t;S.dates=S.dates||{};S.dates[S.n]=t;S.n++;S.hold='';save();T='week';r();scrollTo(0,0)}
+function fin(){const t=iso(new Date()),n=S.n,sl=n%4,k=n/4|0;S.lastSummary=sessionSummary(k,sl);if(S.last!==t)S.run=S.last===ad(t,-1)?S.run+1:1;S.last=t;S.dates=S.dates||{};S.dates[S.n]=t;S.n++;S.hold='';save();T='summary';r();scrollTo(0,0)}
 function skip(){S.hold=ad(iso(new Date()),1);save();T='week';r()}
 function move(d){S.hold=d;save();r()}
+
+function summary(){
+ const x=S.lastSummary;if(!x)return '<div class=c>No completed session summary yet.</div>';
+ const vol=Math.round(x.volume);
+ return `<div class=hero><div class=mu style="margin:0 0 5px">SESSION COMPLETE</div><h2>${lab(x.sl)}</h2><p class=mu>${x.date}</p></div>
+ <div class=summary-grid><div class=c><b>${x.exercises}</b><span>Exercises</span></div><div class=c><b>${x.sets}</b><span>Logged sets</span></div><div class=c><b>${vol.toLocaleString()}</b><span>Volume (${S.units}·reps)</span></div><div class=c><b>${x.prs}</b><span>PR sets</span></div></div>
+ ${x.prs?'<div class=progression-tip><b>Strong session</b><span>You set '+x.prs+' new set-level PR'+(x.prs===1?'':'s')+'.</span></div>':''}
+ <button class=p onclick="T='week';r();scrollTo(0,0)">View week</button><button style="width:100%;margin-top:10px" onclick="T='today';r();scrollTo(0,0)">Back to Today</button>`;
+}
 
 function week(){const t=iso(new Date()),st=ad(t,-((wd(t)+1)%7)),D=S.dates||{};
  let h='<div class=hero><div class=mu style="margin:0 0 5px">SCHEDULE</div><h2>This week</h2><p class=mu>Your current training days from Settings.</p></div>',k=0,run=0,mx=0;
@@ -680,7 +743,7 @@ function more(){
 }
 
 function best(e){return e&&e.s.filter(x=>+x.w).sort((a,b)=>b.w-a.w||b.r-a.r)[0]}
-function prog(){let h='<div class=hero><div class=mu style="margin:0 0 5px">PERFORMANCE</div><h2>Progress</h2><p class=mu>Compare each session with the same workout from last week.</p></div>',any=0;
+function prog(){const currentK=Math.max(0,(S.n-1)/4|0),vol=weeklyVolume(currentK);let h='<div class=hero><div class=mu style="margin:0 0 5px">PERFORMANCE</div><h2>Progress</h2><p class=mu>Compare each session with the same workout from last week.</p></div>';const vm=Object.entries(vol).sort((a,b)=>b[1]-a[1]);if(vm.length){const mx=Math.max(...vm.map(x=>x[1]));h+='<div class=c><div class=r><b>Volume by muscle</b><span class=mu>Week '+(currentK%8+1)+'</span></div><div class=volume-list>'+vm.map(([m,v])=>'<div class=volume-row><div class=r><span>'+esc(m)+'</span><b>'+Math.round(v).toLocaleString()+'</b></div><div class=volume-track><span style="width:'+Math.max(6,Math.round(v/mx*100))+'%"></span></div></div>').join('')+'</div></div>'}let any=0;
  for(let sl=0;sl<4;sl++){const ks=[...new Set(Object.keys(S.log).filter(x=>x.split('|')[1]==sl).map(x=>+x.split('|')[0]))].sort((a,b)=>b-a);if(!ks.length)continue;any=1;
   const c=ks[0],ty=sl%2?L:U;h+=`<div class=c><div class=r><b>${lab(sl)}</b><span class=mu>Week ${c%8+1}${ks.includes(c-1)?' vs '+((c-1)%8+1):''}</span></div>`;
   ty.forEach((e,i)=>{const a=S.log[c+'|'+sl+'|'+i],b=S.log[(c-1)+'|'+sl+'|'+i],x=best(a);if(!x)return;const z=best(b);let ar='',cl='mu';
@@ -722,9 +785,9 @@ function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class
  const meta={today:['Today','●'],exs:['Exercises','▤'],week:['Week','▦'],prog:['Progress','↗'],more:['More','•••']};
  const def=['today','exs','week','prog','more'];
  let order=(S.nav5||def).filter(x=>meta[x]);def.forEach(x=>{if(!order.includes(x))order.push(x)});
- const activeNav=['cmp','prg','cfg'].includes(T)?'more':T;
+ const activeNav=T==='summary'?'today':(['cmp','prg','cfg'].includes(T)?'more':T);
  $('nv').innerHTML=S.setup?order.map(id=>`<button class="${activeNav==id?'on':''}" onclick="T='${id}';CF='';ALT_EDIT='';r();scrollTo(0,0)"><span class=ni>${meta[id][1]}</span><span>${meta[id][0]}</span></button>`).join(''):'';
- $('app').innerHTML=(CP?`<div class=c><b>Select all, then copy</b><textarea rows=8 style="width:100%" readonly onfocus="this.select()">${esc(CP)}</textarea><button onclick="CP='';r()">Close</button></div>`:'')+(!S.setup?cfg(1):{today,exs,week,prog,more,cmp,prg:()=>prg()+hist(),cfg}[T]())}
+ $('app').innerHTML=(CP?`<div class=c><b>Select all, then copy</b><textarea rows=8 style="width:100%" readonly onfocus="this.select()">${esc(CP)}</textarea><button onclick="CP='';r()">Close</button></div>`:'')+(!S.setup?cfg(1):{today,exs,week,prog,more,cmp,prg:()=>prg()+hist(),cfg,summary}[T]())}
 $('tm').onclick=()=>{te=0};
 setInterval(()=>{const e=$('tm');if(!te){e.hidden=1;return}const s=Math.ceil((te-Date.now())/1e3);if(s<=0){te=0;e.hidden=1;try{navigator.vibrate&&navigator.vibrate(300)}catch(x){}return}e.hidden=0;e.textContent='Rest '+(s/60|0)+':'+String(s%60).padStart(2,'0')+' · tap to skip'},500);
 r();
