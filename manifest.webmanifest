@@ -9,8 +9,8 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "any",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%2307080b'/%3E%3Crect x='56' y='56' width='400' height='400' rx='94' fill='%236f52ff'/%3E%3Cpath d='M154 170h204v44H204v62h130v44H204v112h-50z' fill='white'/%3E%3C/svg%3E",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
