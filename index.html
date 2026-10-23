@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#07080b"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Flex Split"><meta name="format-detection" content="telephone=no"><title>Flex Split</title>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#07080b"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Flex Split"><meta name="format-detection" content="telephone=no"><link rel="manifest" href="./manifest.webmanifest?v=1"><link rel="icon" href="./icon.svg?v=1" type="image/svg+xml"><link rel="apple-touch-icon" href="./icon.svg?v=1"><title>Flex Split</title>
 <style>
 :root{--bg:#0d0d0f;--cd:#1a1a1e;--tx:#f2f2f2;--mu:#8b8b93;--ac:#ff5a3c;--ok:#3ecf8e;--bd:#2c2c33;box-sizing:border-box}
 @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f4f4f6;--cd:#fff;--tx:#111;--mu:#666;--bd:#ddd}}
@@ -418,6 +418,31 @@ a{color:#a78bfa}
 @supports (height:100dvh){
  body{min-height:100dvh}
 }
+
+.sticky-ex-head{
+ position:sticky;
+ top:calc(env(safe-area-inset-top,0px) + 6px);
+ z-index:8;
+ margin:-4px -4px 8px;
+ padding:8px 4px;
+ background:linear-gradient(180deg,rgba(17,19,26,.98),rgba(17,19,26,.94));
+ backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+ border-radius:14px;
+}
+.rest-row{margin:10px 0 2px}
+.rest-row select{min-height:40px;height:40px;padding:0 34px 0 10px;width:auto;font-size:13px}
+.progression-tip{
+ display:flex;justify-content:space-between;align-items:center;gap:10px;
+ margin-top:11px;padding:11px 12px;border-radius:14px;
+ background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.20);
+}
+.progression-tip b{color:#52dda9;font-size:14px}
+.progression-tip span{color:var(--mu);font-size:12px;text-align:right}
+@media(max-width:420px){
+ .sticky-ex-head{top:calc(env(safe-area-inset-top,0px) + 4px)}
+ .progression-tip{align-items:flex-start;flex-direction:column}
+ .progression-tip span{text-align:left}
+}
 </style></head><body><div class="version-mark">UI v4</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -447,7 +472,7 @@ const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice
 const ad=(s,k)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+k);return iso(d)},wd=s=>new Date(s+'T12:00:00').getDay();
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const lab=sl=>(sl%2?'Lower ':'Upper ')+(sl<2?1:2);
-const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},ca:{},notes:{},inc:2.5,dates:{},nav:['today','exs','week','prog','cmp','prg','cfg']});
+const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},ca:{},rt:{},notes:{},inc:2.5,dates:{},nav:['today','exs','week','prog','cmp','prg','cfg']});
 let S=DEF(),T='today',te=0,CF='',CP='',EX_DAY=0;
 
 const SUPABASE_URL='https://coowfazvgbrvyumvjyfs.supabase.co';
@@ -475,8 +500,9 @@ async function sbSet(){
  if(error)throw error;
  SB_OK=1;
 }
-const push=()=>{if(!USER)return;clearTimeout(dbT);dbT=setTimeout(()=>sbSet().catch(()=>{SB_OK=0;r()}),800)};
-const save=()=>{S.ts=Date.now();try{localStorage.setItem(userKey(),JSON.stringify(S))}catch(e){}push()};
+const push=()=>{if(!USER)return;clearTimeout(dbT);dbT=setTimeout(async()=>{if(!navigator.onLine){SB_OK=0;try{localStorage.setItem('flexsplit_pending_sync','1')}catch(e){};return}try{await sbSet();try{localStorage.removeItem('flexsplit_pending_sync')}catch(e){}}catch(e){SB_OK=0;try{localStorage.setItem('flexsplit_pending_sync','1')}catch(x){};r()}},500)};
+const save=()=>{S.ts=Date.now();try{localStorage.setItem(userKey(),JSON.stringify(S));localStorage.setItem('flexsplit_pending_sync','1')}catch(e){}push()};
+window.addEventListener('online',()=>{if(USER)push()});
 
 async function loadUserData(){
  if(!USER)return;
@@ -485,7 +511,7 @@ async function loadUserData(){
   const row=await sbGet();SB_OK=1;
   if(row&&row.json){
    const R=JSON.parse(row.json);
-   if((R.ts||0)>=(S.ts||0)){S=R;try{localStorage.setItem(userKey(),JSON.stringify(S))}catch(e){}}
+   if((R.ts||0)>=(S.ts||0)){S=Object.assign(DEF(),R);S.rt=S.rt||{};try{localStorage.setItem(userKey(),JSON.stringify(S))}catch(e){}}
    else if(S.setup)push();
   }else if(S.setup)push();
  }catch(e){SB_OK=0}
@@ -531,6 +557,17 @@ function plan(c){const t=iso(new Date());let d=S.hold&&S.hold>t?S.hold:t;if(d<S.
 
 const inc=()=>S.inc||(S.units==='kg'?2.5:5);
 function badge(sl){return `<span class="b ${sl%2?'L':'U'}">${lab(sl)}</span>`}
+function exercisePR(nm){
+ let best=null;
+ Object.values(S.log||{}).forEach(e=>{if(!e||e.nm!==nm)return;(e.s||[]).forEach(s=>{const w=+s.w||0,r=+s.r||0;if(!w)return;if(!best||w>best.w||(w===best.w&&r>best.r))best={w,r}})});
+ return best;
+}
+function nextWeight(lg){
+ if(!lg||!lg.s||lg.s.length<2||!lg.s.every(s=>+s.w>0&&+s.r>=10))return null;
+ const mx=Math.max(...lg.s.map(s=>+s.w||0));return Math.round((mx+inc())*100)/100;
+}
+function restSeconds(key,compound){S.rt=S.rt||{};return +(S.rt[key]|| (compound?150:105))}
+function setRest(key,v){S.rt=S.rt||{};S.rt[key]=+v;save();r()}
 
 function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U',p=plan(1)[0];
  let h=`<div class=hero><div class=r><div><div class=mu style="margin:0 0 5px">TODAY'S WORKOUT</div><h2>${lab(sl)}</h2></div><span class="b ${sl%2?'L':'U'}">${sl%2?'LOWER':'UPPER'}</span></div><div class=statline><span class=pill>Week ${pw}/8</span><span class=pill>RIR ${pw<3?'2–3':'1–2'}</span><span class=pill>2 × 6–10</span><span class=pill>${sl}/4 this week</span></div><p class=mu style="margin-top:12px">${S.days.includes(wd(iso(new Date())))?'Scheduled training day':'Rest day — training is still available'} · ${S.exp==='beginner'?'Start lighter and focus on form':'Start heavy'}</p></div><button style="width:100%;margin:0 0 14px" onclick="T='exs';r();scrollTo(0,0)">▤ Browse & edit exercises</button>`;
@@ -538,11 +575,13 @@ function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U'
  ty.forEach((e,i)=>{const key=tk+i,custom=(S.ca&&S.ca[key])||[],alts=e[4].concat(custom),si=+(S.sw[key]||0),a=si&&alts[si-1]?alts[si-1]:[e[0],e[1]],nm=a[0],lk=k+'|'+sl+'|'+i,lg=S.log[lk]||{s:[{},{}]},pl=S.log[(k-1)+'|'+sl+'|'+i];
   const last=pl&&pl.nm===nm?pl.s.map(x=>x.w?x.w+S.units+'×'+(x.r||'?'):'–').join(' · '):'no data yet';
   const hit=x=>x&&x.s.length>1&&x.s.every(z=>+z.r>=10&&+z.w>0),wu=!seen[e[3]];seen[e[3]]=1;
-  h+=`<div class="c exercise-card"><div class=r><b class=exercise-title>${i+1}. ${esc(nm)}</b><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
-  <div class=mu>${e[3]} · rest ${e[2]?'2–3 min':'90–120 s'} · Last time: ${last}</div>
+  const pr=exercisePR(nm),suggest=nextWeight(lg),rs=restSeconds(key,e[2]);
+  h+=`<div class="c exercise-card"><div class="r sticky-ex-head"><b class=exercise-title>${i+1}. ${esc(nm)}</b><a class=watch href="${esc(a[1])}" target=_blank rel=noopener>Watch</a></div>
+  <div class=mu>${e[3]} · Last time: ${last}${pr?' · PR '+pr.w+S.units+'×'+(pr.r||'?'):''}</div>
   ${wu?'<div class=mu>Warm-up: 50%×5 · 75%×3 · 90%×1</div>':''}
-  ${[0,1].map(j=>{const s=lg.s[j]||{};return `<div class=set><span class=mu>Set ${j+1}</span><input inputmode=decimal placeholder="${S.units}" value="${s.w||''}" oninput="sv('${lk}','${esc(nm)}',${j},'w',this.value)"><input inputmode=numeric placeholder=reps value="${s.r||''}" oninput="sv('${lk}','${esc(nm)}',${j},'r',this.value)"><input inputmode=numeric placeholder=RIR value="${s.i||''}" oninput="sv('${lk}','${esc(nm)}',${j},'i',this.value)"><button class="${s.d?'dn':''}" onclick="dn('${lk}','${esc(nm)}',${j},${e[2]})">✓</button></div>`}).join('')}
-  ${hit(lg)||hit(pl)&&pl.nm===nm?`<div class=ok style="margin-top:8px">▲ Increase weight next time (+${inc()} ${S.units})</div>`:''}
+  <div class="r rest-row"><span class=mu>Rest timer</span><select onchange="setRest('${key}',this.value)"><option value=60 ${rs===60?'selected':''}>1:00</option><option value=90 ${rs===90?'selected':''}>1:30</option><option value=105 ${rs===105?'selected':''}>1:45</option><option value=120 ${rs===120?'selected':''}>2:00</option><option value=150 ${rs===150?'selected':''}>2:30</option><option value=180 ${rs===180?'selected':''}>3:00</option><option value=240 ${rs===240?'selected':''}>4:00</option></select></div>
+  ${[0,1].map(j=>{const s=lg.s[j]||{};return `<div class=set><span class=mu>Set ${j+1}</span><input inputmode=decimal placeholder="${S.units}" value="${s.w||''}" oninput="sv('${lk}','${esc(nm)}',${j},'w',this.value)"><input inputmode=numeric placeholder=reps value="${s.r||''}" oninput="sv('${lk}','${esc(nm)}',${j},'r',this.value)"><input inputmode=numeric placeholder=RIR value="${s.i||''}" oninput="sv('${lk}','${esc(nm)}',${j},'i',this.value)"><button class="${s.d?'dn':''}" onclick="dn('${lk}','${esc(nm)}',${j},${rs})">✓</button></div>`}).join('')}
+  ${suggest?`<div class=progression-tip><b>Next time: ${suggest} ${S.units}</b><span>Both sets reached the rep target.</span></div>`:''}
   <div class=alt-row><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Swap':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()" aria-label="Add alternative">＋</button></div>
   ${ALT_EDIT===key?`<div class=alt-editor><b>Add alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://... video or exercise link"><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save alternative</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
   </div>`});
@@ -550,7 +589,7 @@ function today(){const n=S.n,sl=n%4,k=n/4|0,pw=k%8+1,ty=sl%2?L:U,tk=sl%2?'L':'U'
  <button class=p onclick=fin()>Finish session</button>`}
 
 function sv(lk,nm,j,f,v){const e=S.log[lk]=S.log[lk]||{nm,s:[{},{}]};e.nm=nm;e.s[j][f]=v;save()}
-function dn(lk,nm,j,c){sv(lk,nm,j,'d',!(S.log[lk]&&S.log[lk].s[j].d));if(S.log[lk].s[j].d)te=Date.now()+(c?150:105)*1e3;r()}
+function dn(lk,nm,j,secs){sv(lk,nm,j,'d',!(S.log[lk]&&S.log[lk].s[j].d));if(S.log[lk].s[j].d)te=Date.now()+(+secs||105)*1e3;r()}
 function sw(k,v){S.sw[k]=+v;save();r()}
 function addAlt(k){const name=($('an_'+k)?.value||'').trim(),url=($('au_'+k)?.value||'').trim();if(!name||!/^https?:\/\//i.test(url)){toast('Enter an exercise name and a valid link.');return}S.ca=S.ca||{};S.ca[k]=S.ca[k]||[];S.ca[k].push([name,url]);const base=k[0]==='U'?U:L,idx=+k.slice(1),defaults=(base[idx]&&base[idx][4]?base[idx][4].length:0);S.sw[k]=defaults+S.ca[k].length;ALT_EDIT='';save();r();toast('Alternative added.')}
 function fin(){const t=iso(new Date());if(S.last!==t)S.run=S.last===ad(t,-1)?S.run+1:1;S.last=t;S.dates=S.dates||{};S.dates[S.n]=t;S.n++;S.hold='';save();T='week';r();scrollTo(0,0)}
@@ -655,4 +694,5 @@ function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class
 $('tm').onclick=()=>{te=0};
 setInterval(()=>{const e=$('tm');if(!te){e.hidden=1;return}const s=Math.ceil((te-Date.now())/1e3);if(s<=0){te=0;e.hidden=1;try{navigator.vibrate&&navigator.vibrate(300)}catch(x){}return}e.hidden=0;e.textContent='Rest '+(s/60|0)+':'+String(s%60).padStart(2,'0')+' · tap to skip'},500);
 r();
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js?v=1').catch(()=>{}))}
 </script></body></html>
