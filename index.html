@@ -699,9 +699,11 @@ function today(){
    <div class=alt-row><select onchange="sw('${key}',this.value)"><option value=0 ${si?'':'selected'}>${esc(e[0])}</option>${alts.map((x,j)=>`<option value=${j+1} ${si==j+1?'selected':''}>${j<e[4].length?'Swap':'Custom'}: ${esc(x[0])}</option>`).join('')}</select><button class=alt-add onclick="ALT_EDIT=ALT_EDIT==='${key}'?'':'${key}';r()">＋</button></div>
    ${ALT_EDIT===key?`<div class=alt-editor><b>Add alternative</b><input id="an_${key}" placeholder="Exercise name"><input id="au_${key}" type=url inputmode=url placeholder="https://..."><div class=alt-actions><button class=p onclick="addAlt('${key}')">Save</button><button onclick="ALT_EDIT='';r()">Cancel</button></div></div>`:''}
  </div>
+ <div class=today-finish-wrap>
  <div class=focus-actions><button onclick="undoLast()" ${UNDO_STACK.length?'':'disabled'}>↶ Undo</button><button onclick="T='exs';r();scrollTo(0,0)">Edit exercises</button></div>
- <div class=c><textarea style="width:100%" rows=2 placeholder="Session note" oninput="S.notes[S.n]=this.value;save()">${esc(S.notes[n])}</textarea></div>
- <button class=p onclick=fin()>Finish session</button>`;
+ <div class=c style="margin-bottom:10px"><textarea style="width:100%" rows=2 placeholder="Session note" oninput="S.notes[S.n]=this.value;save()">${esc(S.notes[n])}</textarea></div>
+ <button class=p onclick=fin()>Finish session</button>
+ </div>`;
  setTimeout(centerExerciseTab,0);
  return h;
 }
