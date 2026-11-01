@@ -490,9 +490,8 @@ nav{
 .exercise-strip button b{font-size:14px;line-height:1}
 .exercise-strip .ex-chip-label{font-size:9px!important;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;color:inherit}
 .exercise-strip button small{font-size:8px;line-height:1;color:inherit;opacity:.75}
-</style></head><body><div class="version-mark">UI v24</div><div id="app"></div><div id="tm" hidden></div>
+</style></head><body><div class="version-mark">UI v25</div><div id="app"></div><div id="tm" hidden></div>
 <nav id="nv"></nav>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const M='https://musclewiki.com/ar-sa/exercise/',Y='https://www.youtube.com/watch?v=',m=s=>M+s,y=s=>Y+s;
 // [name, video, compound, muscle, [alternatives]]
@@ -522,11 +521,7 @@ const lab=sl=>(sl%2?'Lower ':'Upper ')+(sl<2?1:2);
 const DEF=()=>({setup:0,units:'kg',exp:'beginner',days:[6,0,2,3],start:iso(new Date()),n:0,hold:'',last:'',run:0,log:{},sw:{},ca:{},rt:{},notes:{},inc:2.5,dates:{},nav:['today','exs','week','prog','cmp','prg','cfg']});
 let S=DEF(),T='today',te=0,CF='',CP='',EX_DAY=0,CUR_EX=0,UNDO_STACK=[],SWIPE_X=0;
 
-const SUPABASE_URL='https://coowfazvgbrvyumvjyfs.supabase.co';
-const SUPABASE_KEY='sb_publishable_hXvOFNYNxQERls14TkW9YA_yjoTjRaK';
-const SB_TABLE='flexsplit_state';
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let USER=null,AUTH_READY=0,AUTH_MSG='',dbT=0,SB_OK=0,ALT_EDIT='';
+let USER={id:'local',email:''},AUTH_READY=1,AUTH_MSG='',ALT_EDIT='';
 const EMAIL_KEY='flexsplit_email',REMEMBER_KEY='flexsplit_remember';
 const IDB_NAME='flexsplit_local',IDB_STORE='state',IDB_KEY='primary';
 let IDB_DB=null,STORAGE_PERSISTED=false;
@@ -535,73 +530,16 @@ async function idbGet(){if(!IDB_DB)await idbOpen();return new Promise((resolve,r
 async function idbSet(value){if(!IDB_DB)await idbOpen();return new Promise((resolve,reject)=>{const tx=IDB_DB.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(value,IDB_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
 async function idbClear(){if(!IDB_DB)await idbOpen();return new Promise((resolve,reject)=>{const tx=IDB_DB.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).delete(IDB_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
 async function requestPersistentStorage(){try{if(!navigator.storage)return false;STORAGE_PERSISTED=await navigator.storage.persisted();if(!STORAGE_PERSISTED&&navigator.storage.persist)STORAGE_PERSISTED=await navigator.storage.persist();return STORAGE_PERSISTED}catch(e){return false}}
-async function migrateLegacyLocal(){try{const existing=await idbGet();if(existing)return existing;const legacy=localStorage.getItem(userKey())||localStorage.getItem(K);if(legacy){const parsed=JSON.parse(legacy);await idbSet(parsed);return parsed}}catch(e){}return null}
+const userKey=()=>K+'_local';
+async function migrateLegacyLocal(){try{const existing=await idbGet();if(existing)return existing;const keys=Object.keys(localStorage).filter(k=>k.startsWith(K+'_')||k===K);for(const key of keys){const raw=localStorage.getItem(key);if(!raw)continue;try{const parsed=JSON.parse(raw);if(parsed&&typeof parsed==='object'&&parsed.setup!==undefined){await idbSet(parsed);return parsed}}catch(e){}}}catch(e){}return null}
 function backupObject(){return {app:'Flex Split',version:1,exported_at:new Date().toISOString(),state:S}}
 function exportBackup(){const blob=new Blob([JSON.stringify(backupObject(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='flex-split-backup-'+iso(new Date())+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function importBackupFile(input){const file=input&&input.files&&input.files[0];if(!file)return;const fr=new FileReader();fr.onload=async()=>{try{const data=JSON.parse(fr.result),state=data&&data.state?data.state:data;if(!state||typeof state!=='object')throw new Error();S=Object.assign(DEF(),state);S.rt=S.rt||{};await idbSet(S);save();r();toast('Backup restored.')}catch(e){toast('Invalid backup file.')}};fr.readAsText(file)}
-
-const rememberOn=()=>{try{return localStorage.getItem(REMEMBER_KEY)!=='0'}catch(e){return true}};
-const userKey=()=>USER?K+'_'+USER.id:K+'_signedout';
-
-async function loadLocal(){
- S=DEF();
- try{await idbOpen();const x=await migrateLegacyLocal();if(x)S=Object.assign(DEF(),x)}
- catch(e){try{const x=localStorage.getItem(userKey());if(x)S=Object.assign(DEF(),JSON.parse(x))}catch(x){}}
- S.rt=S.rt||{};
-}
-async function sbGet(){
- if(!USER)return null;
- const {data,error}=await sb.from(SB_TABLE).select('id,json,updated_at').eq('id',USER.id).maybeSingle();
- if(error)throw error;
- return data;
-}
-async function sbSet(){
- if(!USER)return;
- const {error}=await sb.from(SB_TABLE).upsert({id:USER.id,json:JSON.stringify(S),updated_at:new Date().toISOString()},{onConflict:'id'});
- if(error)throw error;
- SB_OK=1;
-}
-const push=()=>{if(!USER)return;clearTimeout(dbT);dbT=setTimeout(async()=>{if(!navigator.onLine){SB_OK=0;try{localStorage.setItem('flexsplit_pending_sync','1')}catch(e){};return}try{await sbSet();try{localStorage.removeItem('flexsplit_pending_sync')}catch(e){}}catch(e){SB_OK=0;try{localStorage.setItem('flexsplit_pending_sync','1')}catch(x){};r()}},500)};
+async function loadLocal(){S=DEF();try{await idbOpen();const x=await migrateLegacyLocal();if(x)S=Object.assign(DEF(),x)}catch(e){try{const x=localStorage.getItem(userKey());if(x)S=Object.assign(DEF(),JSON.parse(x))}catch(x){}}S.rt=S.rt||{}}
 const save=()=>{S.ts=Date.now();idbSet(S).catch(()=>{});try{localStorage.setItem(userKey(),JSON.stringify(S))}catch(e){}};
-window.addEventListener('online',()=>{});
-
-async function loadUserData(){
- if(!USER)return;
- await loadLocal();
- SB_OK=0;
-}
-async function authInit(){
- try{await idbOpen();await requestPersistentStorage()}catch(e){}
- const {data}=await sb.auth.getSession();
- if(data.session&&!rememberOn()){await sb.auth.signOut();USER=null}else USER=data.session?.user||null;
- if(USER)await loadUserData();
- AUTH_READY=1;r();
- sb.auth.onAuthStateChange(async(_event,session)=>{
-  const old=USER?.id||'';USER=session?.user||null;
-  if(USER&&USER.id!==old)await loadUserData();
-  if(!USER){S=DEF();SB_OK=0;T='today'}
-  AUTH_READY=1;r();
- });
-}
-async function signIn(){
- const email=($('ae')?.value||'').trim(),password=$('ap')?.value||'',remember=$('ar')?.checked!==false;
- AUTH_MSG='';if(!email||!password){AUTH_MSG='Enter email and password.';r();return}
- try{localStorage.setItem(EMAIL_KEY,email);localStorage.setItem(REMEMBER_KEY,remember?'1':'0')}catch(e){}
- const {error}=await sb.auth.signInWithPassword({email,password});
- AUTH_MSG=error?error.message:'';if(error)r();
-}
-async function signUp(){
- const email=($('ae')?.value||'').trim(),password=$('ap')?.value||'',remember=$('ar')?.checked!==false;
- AUTH_MSG='';if(!email||password.length<6){AUTH_MSG='Enter an email and a password of at least 6 characters.';r();return}
- try{localStorage.setItem(EMAIL_KEY,email);localStorage.setItem(REMEMBER_KEY,remember?'1':'0')}catch(e){}
- const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
- if(error)AUTH_MSG=error.message;
- else if(!data.session)AUTH_MSG='Account created. Check your email to confirm it, then sign in.';
- else AUTH_MSG='Account created.';
- r();
-}
-async function signOut(){await sb.auth.signOut();}
-function authView(){let em='';try{em=localStorage.getItem(EMAIL_KEY)||''}catch(e){}return `<div class=hero><h2>Flex Split</h2><p class=mu>Your training, synced across devices.</p></div><div class=c><input id=ae type=email autocomplete=email placeholder="Email" value="${esc(em)}" style="width:100%;margin-bottom:8px"><input id=ap type=password autocomplete=current-password placeholder="Password" style="width:100%;margin-bottom:8px"><label class=remember><input id=ar type=checkbox ${rememberOn()?'checked':''}>Remember me on this device</label><button class=p onclick="signIn()">Sign in</button><button style="width:100%;margin-top:8px" onclick="signUp()">Create account</button>${AUTH_MSG?`<div class="${AUTH_MSG.startsWith('Account')?'ok':'wr'}" style="margin-top:10px">${esc(AUTH_MSG)}</div>`:''}</div>`}
+async function authInit(){try{await idbOpen();await requestPersistentStorage();await loadLocal()}catch(e){}AUTH_READY=1;r()}
+function signOut(){}
+function authView(){return ''}
 authInit();
 
 function plan(c){const t=iso(new Date());let d=S.hold&&S.hold>t?S.hold:t;if(d<S.start)d=S.start;if(S.last&&S.last>=d)d=ad(S.last,1);
@@ -843,14 +781,14 @@ function prg(){const k=S.n/4|0,pw=k%8+1;return `<button class=back-btn onclick="
 function navOrderUI(){const meta={today:['Today','●'],exs:['Exercises','▤'],week:['Week','▦'],prog:['Progress','↗'],more:['More','•••']},def=['today','exs','week','prog','more'];let cur=(S.nav5||def).filter(x=>def.includes(x));def.forEach(x=>{if(!cur.includes(x))cur.push(x)});S.nav5=cur;return `<div class=c><b>Navigation order</b><p class=mu>Arrange the five main tabs.</p>${cur.map((id,i)=>`<div class=nav-order-row><span class=grab>${meta[id][1]}</span><b>${meta[id][0]}</b><button onclick="moveNav5('${id}',-1)" ${i===0?'disabled':''}>↑</button><button onclick="moveNav5('${id}',1)" ${i===cur.length-1?'disabled':''}>↓</button></div>`).join('')}</div>`}
 function moveNav5(id,dir){const def=['today','exs','week','prog','more'],cur=(S.nav5||def).slice();const i=cur.indexOf(id),j=i+dir;if(i<0||j<0||j>=cur.length)return;[cur[i],cur[j]]=[cur[j],cur[i]];S.nav5=cur;save();r();}
 
-function cfg(first){return `${first?'':'<button class=back-btn onclick="T=\'more\';r()">← More</button>'}<div class=hero><div class=mu style="margin:0 0 5px">${first?'WELCOME':'ACCOUNT & APP'}</div><h2>${first?'Set up Flex Split':'Settings'}</h2><p class=mu>${STORAGE_PERSISTED?'Saved locally with persistent storage.':'Saved locally on this device.'}${USER?' · '+esc(USER.email):''}</p></div><div class=c><b>Days you can train</b><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${[6,0,1,2,3,4,5].map(d=>`<button class="d ${S.days.includes(d)?'s':''}" onclick="td(${d})">${DN[d]}</button>`).join('')}</div>${S.days.length<3?'<div class=wr style="margin-top:8px">Aim for at least 3 days. 3 consistent beats 5 inconsistent.</div>':''}</div>
+function cfg(first){return `${first?'':'<button class=back-btn onclick="T=\'more\';r()">← More</button>'}<div class=hero><div class=mu style="margin:0 0 5px">${first?'WELCOME':'ACCOUNT & APP'}</div><h2>${first?'Set up Flex Split':'Settings'}</h2><p class=mu>${STORAGE_PERSISTED?'Saved locally with persistent storage.':'Saved locally on this device.'}</p></div><div class=c><b>Days you can train</b><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${[6,0,1,2,3,4,5].map(d=>`<button class="d ${S.days.includes(d)?'s':''}" onclick="td(${d})">${DN[d]}</button>`).join('')}</div>${S.days.length<3?'<div class=wr style="margin-top:8px">Aim for at least 3 days. 3 consistent beats 5 inconsistent.</div>':''}</div>
  <div class=c><div class=r>Units<select onchange="S.units=this.value;S.inc=this.value=='kg'?2.5:5;save();r()"><option ${S.units=='kg'?'selected':''}>kg</option><option ${S.units=='lb'?'selected':''}>lb</option></select></div>
  <div class=r style="margin-top:8px">Experience<select onchange="S.exp=this.value;save()"><option value=beginner ${S.exp=='beginner'?'selected':''}>Beginner</option><option value=advanced ${S.exp=='advanced'?'selected':''}>Advanced</option></select></div>
  <div class=r style="margin-top:8px">Start date<input type=date value="${S.start}" onchange="S.start=this.value;save()"></div>
  <div class=r style="margin-top:8px">Weight step<input type=number step=.5 style="width:90px" value="${inc()}" onchange="S.inc=+this.value;save()"></div></div>
  ${first?'':navOrderUI()}
  ${first?'':`<div class=c><b>Local data</b><p class=mu>Workout data is stored on this iPhone using IndexedDB. ${STORAGE_PERSISTED?'Persistent storage is enabled.':'Persistent storage has not been granted yet.'}</p><button style="width:100%" onclick="exportBackup()">Export backup</button><input id=backupFile type=file accept="application/json,.json" style="display:none" onchange="importBackupFile(this)"><button style="width:100%;margin-top:8px" onclick="document.getElementById('backupFile').click()">Import backup</button></div>`}
- ${first?'<button class=p onclick="S.setup=1;save();r()">Start</button>':'<button style="width:100%" onclick="cp(-1)">Copy all data for Sheets</button><button style="width:100%;margin-top:8px" onclick="rst()">'+(CF==='rst'?'Tap again to delete everything':'Reset data')+'</button><button style="width:100%;margin-top:8px" onclick="signOut()">Sign out</button>'}`}
+ ${first?'<button class=p onclick="S.setup=1;save();r()">Start</button>':'<button style="width:100%" onclick="cp(-1)">Copy all data for Sheets</button><button style="width:100%;margin-top:8px" onclick="rst()">'+(CF==='rst'?'Tap again to delete everything':'Reset data')+'</button>'}`}
 function td(d){const i=S.days.indexOf(d);i<0?S.days.push(d):S.days.splice(i,1);save();r()}
 const rows=()=>Object.keys(S.log).map(k=>{const[a,b,i]=k.split('|').map(Number);return{k:a,sl:b,i,e:S.log[k]}}).filter(x=>x.e.s.some(s=>s.w)).sort((p,q)=>p.k-q.k||p.sl-q.sl||p.i-q.i);
 const fmt=s=>s&&s.w?s.w+'×'+(s.r||'?')+(s.i?' @'+s.i:''):'';
@@ -869,7 +807,7 @@ function cmp(){const back='<button class=back-btn onclick="T=\'more\';r()">← M
 function del(k){if(CF!==k){CF=k;r();return}delete S.log[k];CF='';save();r()}
 async function rst(){if(CF!=='rst'){CF='rst';r();return}try{localStorage.removeItem(userKey())}catch(e){}try{await idbClear()}catch(e){}S=DEF();await idbSet(S).catch(()=>{});T='today';CF='';r()}
 function toast(t){const e=document.createElement('div');e.className='c';e.style.cssText='position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));text-align:center;z-index:9';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2500)}
-function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}if(!USER){$('nv').innerHTML='';$('app').innerHTML=authView();return}
+function r(){if(!AUTH_READY){$('nv').innerHTML='';$('app').innerHTML='<div class=c>Loading…</div>';return}
  const meta={today:['Today','●'],exs:['Exercises','▤'],week:['Week','▦'],prog:['Progress','↗'],more:['More','•••']};
  const def=['today','exs','week','prog','more'];
  let order=(S.nav5||def).filter(x=>meta[x]);def.forEach(x=>{if(!order.includes(x))order.push(x)});
