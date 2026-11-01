@@ -528,12 +528,26 @@ const SB_TABLE='flexsplit_state';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let USER=null,AUTH_READY=0,AUTH_MSG='',dbT=0,SB_OK=0,ALT_EDIT='';
 const EMAIL_KEY='flexsplit_email',REMEMBER_KEY='flexsplit_remember';
+const IDB_NAME='flexsplit_local',IDB_STORE='state',IDB_KEY='primary';
+let IDB_DB=null,STORAGE_PERSISTED=false;
+function idbOpen(){return new Promise((resolve,reject)=>{const req=indexedDB.open(IDB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE)};req.onsuccess=()=>{IDB_DB=req.result;resolve(IDB_DB)};req.onerror=()=>reject(req.error)})}
+async function idbGet(){if(!IDB_DB)await idbOpen();return new Promise((resolve,reject)=>{const tx=IDB_DB.transaction(IDB_STORE,'readonly'),req=tx.objectStore(IDB_STORE).get(IDB_KEY);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)})}
+async function idbSet(value){if(!IDB_DB)await idbOpen();return new Promise((resolve,reject)=>{const tx=IDB_DB.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(value,IDB_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
+async function idbClear(){if(!IDB_DB)await idbOpen();return new Promise((resolve,reject)=>{const tx=IDB_DB.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).delete(IDB_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
+async function requestPersistentStorage(){try{if(!navigator.storage)return false;STORAGE_PERSISTED=await navigator.storage.persisted();if(!STORAGE_PERSISTED&&navigator.storage.persist)STORAGE_PERSISTED=await navigator.storage.persist();return STORAGE_PERSISTED}catch(e){return false}}
+async function migrateLegacyLocal(){try{const existing=await idbGet();if(existing)return existing;const legacy=localStorage.getItem(userKey())||localStorage.getItem(K);if(legacy){const parsed=JSON.parse(legacy);await idbSet(parsed);return parsed}}catch(e){}return null}
+function backupObject(){return {app:'Flex Split',version:1,exported_at:new Date().toISOString(),state:S}}
+function exportBackup(){const blob=new Blob([JSON.stringify(backupObject(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='flex-split-backup-'+iso(new Date())+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function importBackupFile(input){const file=input&&input.files&&input.files[0];if(!file)return;const fr=new FileReader();fr.onload=async()=>{try{const data=JSON.parse(fr.result),state=data&&data.state?data.state:data;if(!state||typeof state!=='object')throw new Error();S=Object.assign(DEF(),state);S.rt=S.rt||{};await idbSet(S);save();r();toast('Backup restored.')}catch(e){toast('Invalid backup file.')}};fr.readAsText(file)}
+
 const rememberOn=()=>{try{return localStorage.getItem(REMEMBER_KEY)!=='0'}catch(e){return true}};
 const userKey=()=>USER?K+'_'+USER.id:K+'_signedout';
 
-function loadLocal(){
+async function loadLocal(){
  S=DEF();
- try{const x=localStorage.getItem(userKey());if(x)S=JSON.parse(x)}catch(e){}
+ try{await idbOpen();const x=await migrateLegacyLocal();if(x)S=Object.assign(DEF(),x)}
+ catch(e){try{const x=localStorage.getItem(userKey());if(x)S=Object.assign(DEF(),JSON.parse(x))}catch(x){}}
+ S.rt=S.rt||{};
 }
 async function sbGet(){
  if(!USER)return null;
@@ -548,22 +562,16 @@ async function sbSet(){
  SB_OK=1;
 }
 const push=()=>{if(!USER)return;clearTimeout(dbT);dbT=setTimeout(async()=>{if(!navigator.onLine){SB_OK=0;try{localStorage.setItem('flexsplit_pending_sync','1')}catch(e){};return}try{await sbSet();try{localStorage.removeItem('flexsplit_pending_sync')}catch(e){}}catch(e){SB_OK=0;try{localStorage.setItem('flexsplit_pending_sync','1')}catch(x){};r()}},500)};
-const save=()=>{S.ts=Date.now();try{localStorage.setItem(userKey(),JSON.stringify(S));localStorage.setItem('flexsplit_pending_sync','1')}catch(e){}push()};
-window.addEventListener('online',()=>{if(USER)push()});
+const save=()=>{S.ts=Date.now();idbSet(S).catch(()=>{});try{localStorage.setItem(userKey(),JSON.stringify(S))}catch(e){}};
+window.addEventListener('online',()=>{});
 
 async function loadUserData(){
  if(!USER)return;
- loadLocal();SB_OK=0;
- try{
-  const row=await sbGet();SB_OK=1;
-  if(row&&row.json){
-   const R=JSON.parse(row.json);
-   if((R.ts||0)>=(S.ts||0)){S=Object.assign(DEF(),R);S.rt=S.rt||{};try{localStorage.setItem(userKey(),JSON.stringify(S))}catch(e){}}
-   else if(S.setup)push();
-  }else if(S.setup)push();
- }catch(e){SB_OK=0}
+ await loadLocal();
+ SB_OK=0;
 }
 async function authInit(){
+ try{await idbOpen();await requestPersistentStorage()}catch(e){}
  const {data}=await sb.auth.getSession();
  if(data.session&&!rememberOn()){await sb.auth.signOut();USER=null}else USER=data.session?.user||null;
  if(USER)await loadUserData();
